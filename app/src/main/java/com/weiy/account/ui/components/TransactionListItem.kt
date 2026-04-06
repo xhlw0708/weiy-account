@@ -30,7 +30,7 @@ fun TransactionListItem(
     transaction: TransactionRecord,
     modifier: Modifier = Modifier,
     incomeAmountColor: Color = MaterialTheme.colorScheme.primary,
-    expenseAmountColor: Color = MaterialTheme.colorScheme.error,
+    expenseAmountColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     onClick: (Long) -> Unit
 ) {
     val isIncome = transaction.type == TransactionType.INCOME
@@ -88,7 +88,7 @@ fun TransactionListItem(
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = if (transaction.note.isBlank()) "无备注" else transaction.note,
+                    text = transaction.note.ifBlank { "" },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

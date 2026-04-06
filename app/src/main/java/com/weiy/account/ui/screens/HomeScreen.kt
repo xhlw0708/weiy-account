@@ -262,7 +262,6 @@ fun HomeScreen(
                             TransactionListItem(
                                 transaction = transaction,
                                 incomeAmountColor = Color(0xFF2E7D32),
-                                expenseAmountColor = Color.Black,
                                 onClick = onOpenTransaction
                             )
                         }

@@ -7,6 +7,9 @@ import kotlinx.serialization.Serializable
 sealed interface AppRoute : NavKey {
 
     @Serializable
+    data object Onboarding : AppRoute
+
+    @Serializable
     data object Home : AppRoute
 
     @Serializable
@@ -43,4 +46,3 @@ fun AppRoute.toStartDestinationOrNull(): StartDestination? {
         else -> null
     }
 }
-

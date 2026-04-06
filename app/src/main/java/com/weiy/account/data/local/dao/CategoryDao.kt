@@ -24,6 +24,12 @@ interface CategoryDao {
     @Query("UPDATE categories SET name = :name WHERE id = :id")
     suspend fun updateCategoryName(id: Long, name: String)
 
+    @Query("DELETE FROM categories WHERE id = :id")
+    suspend fun deleteCategoryById(id: Long)
+
+    @Query("SELECT COUNT(*) FROM transactions WHERE categoryId = :id")
+    suspend fun countTransactionsByCategoryId(id: Long): Int
+
     @Query(
         """
         SELECT * FROM categories
@@ -52,4 +58,3 @@ interface CategoryDao {
     @Query("SELECT COUNT(*) FROM categories")
     suspend fun countAll(): Int
 }
-

@@ -58,6 +58,12 @@ class CategoryManageViewModel(
         }
     }
 
+    fun deleteCategory(category: CategoryItem, onResult: (String?) -> Unit) {
+        viewModelScope.launch {
+            onResult(categoryRepository.deleteCategory(category))
+        }
+    }
+
     companion object {
         fun factory(categoryRepository: CategoryRepository) = viewModelFactory {
             initializer {

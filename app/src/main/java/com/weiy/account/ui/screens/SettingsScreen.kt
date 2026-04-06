@@ -19,7 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.weiy.account.BuildConfig
 import com.weiy.account.model.StartDestination
 import com.weiy.account.model.TransactionType
 import com.weiy.account.viewmodel.SettingsViewModel
@@ -81,11 +84,13 @@ fun SettingsScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    SettingSwitchRow(
-                        title = "已显示新手引导",
-                        checked = uiState.onboardingShown,
-                        onCheckedChange = viewModel::setOnboardingShown
-                    )
+                    if (BuildConfig.FLAVOR == "dev") {
+                        SettingSwitchRow(
+                            title = "已显示新手引导",
+                            checked = uiState.onboardingShown,
+                            onCheckedChange = viewModel::setOnboardingShown
+                        )
+                    }
                     SettingSwitchRow(
                         title = "启用深色模式",
                         checked = uiState.darkModeEnabled,
@@ -111,7 +116,7 @@ private fun DestinationSelectRow(
     selected: StartDestination,
     onSelected: (StartDestination) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row (horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         StartDestination.entries.forEach { destination ->
             FilterChip(
                 selected = destination == selected,
@@ -127,7 +132,7 @@ private fun TypeSelectRow(
     selected: TransactionType,
     onSelected: (TransactionType) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         TransactionType.entries.forEach { type ->
             FilterChip(
                 selected = selected == type,
@@ -150,5 +155,15 @@ private fun SettingSwitchRow(
     ) {
         Text(text = title, style = MaterialTheme.typography.bodyLarge)
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Preview
+@Composable
+fun MyButton() {
+    Button(
+        onClick = {},
+    ) {
+        Text("你好", color = MaterialTheme.colorScheme.onPrimary)
     }
 }

@@ -1,5 +1,4 @@
 package com.weiy.account.ui
-
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -28,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +47,7 @@ import com.weiy.account.navigation.toAppRoute
 import com.weiy.account.navigation.toStartDestinationOrNull
 import com.weiy.account.ui.screens.CategoryManageScreen
 import com.weiy.account.ui.screens.HomeScreen
+import com.weiy.account.ui.screens.OnboardingScreen
 import com.weiy.account.ui.screens.SettingsScreen
 import com.weiy.account.ui.screens.StatsScreen
 import com.weiy.account.ui.screens.TransactionEditScreen
@@ -70,13 +71,19 @@ fun AppMain(
     appContainer: AppContainer,
     settingsViewModel: SettingsViewModel
 ) {
+    val settings by settingsViewModel.uiState.collectAsState()
     val startRoute = remember {
-        appContainer.settingsRepository.currentSettings.defaultStartDestination.toAppRoute()
+        if (settings.onboardingShown) {
+            settings.defaultStartDestination.toAppRoute()
+        } else {
+            AppRoute.Onboarding
+        }
     }
     val backStack = rememberNavBackStack(startRoute)
 
     val currentRoute = (backStack.lastOrNull() as? AppRoute) ?: startRoute
     val canGoBack = backStack.size > 1
+    val showTopBar = currentRoute != AppRoute.Onboarding && currentRoute != AppRoute.CategoryManage
     val showBottomBar = currentRoute.toStartDestinationOrNull() != null
     val isHomeRoute = currentRoute == AppRoute.Home
     var homeFabScrollUpEnabled by remember { mutableStateOf(false) }
@@ -110,7 +117,8 @@ fun AppMain(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         topBar = {
-            TopAppBar(
+            if (showTopBar) {
+                TopAppBar(
                 title = {
                     Text(
                         text = routeTitle(currentRoute),
@@ -131,7 +139,8 @@ fun AppMain(
                         }
                     }
                 }
-            )
+                )
+            }
         },
         bottomBar = {
             if (showBottomBar) {
@@ -208,6 +217,19 @@ fun AppMain(
                 rememberViewModelStoreNavEntryDecorator()
             ),
             entryProvider = entryProvider<NavKey> {
+                entry<AppRoute.Onboarding> {
+                    OnboardingScreen(
+                        onFinish = {
+                            settingsViewModel.setOnboardingShown(true)
+                            val destination = appContainer.settingsRepository.currentSettings
+                                .defaultStartDestination
+                                .toAppRoute()
+                            backStack.clear()
+                            backStack.add(destination)
+                        }
+                    )
+                }
+
                 entry<AppRoute.Home> {
                     val vm: HomeViewModel = viewModel(
                         factory = HomeViewModel.factory(appContainer.transactionRepository)
@@ -284,7 +306,8 @@ fun AppMain(
 
 private fun routeTitle(route: AppRoute): String {
     return when (route) {
-        AppRoute.Home -> "Weiy-记账"
+        AppRoute.Onboarding -> "Onboarding"
+        AppRoute.Home -> "唯忆记账"
         AppRoute.TransactionList -> "账单"
         AppRoute.Stats -> "报表"
         AppRoute.Settings -> "设置"
