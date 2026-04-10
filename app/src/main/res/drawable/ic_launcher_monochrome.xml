@@ -2,47 +2,9 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <group
-        android:pivotX="54"
-        android:pivotY="54"
-        android:scaleX="0.7"
-        android:scaleY="0.7">
-        <path
-            android:fillColor="#00000000"
-            android:pathData="M38,24L64,50"
-            android:strokeColor="#FF000000"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round"
-            android:strokeWidth="12" />
-        <path
-            android:fillColor="#00000000"
-            android:pathData="M70,24L44,50"
-            android:strokeColor="#FF000000"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round"
-            android:strokeWidth="12" />
-        <path
-            android:fillColor="#00000000"
-            android:pathData="M54,36L54,86"
-            android:strokeColor="#FF000000"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round"
-            android:strokeWidth="12" />
-        <path
-            android:fillColor="#00000000"
-            android:pathData="M30,50L78,50"
-            android:strokeColor="#FF000000"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round"
-            android:strokeWidth="12" />
-        <path
-            android:fillColor="#00000000"
-            android:pathData="M30,66L78,66"
-            android:strokeColor="#FF000000"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round"
-            android:strokeWidth="12" />
-    </group>
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M554.88,554.794667v-42.666667h128v-85.333333h-110.336L663.04,336.213333l-60.330667,-60.330666 -90.496,90.538666 -90.496,-90.538666 -60.373333,60.330666 90.538667,90.538667H341.546667v85.333333h128v42.666667h-128v85.333333h128v85.333334h85.333333v-85.333334h128v-85.333333h-128z" />
 </vector>
