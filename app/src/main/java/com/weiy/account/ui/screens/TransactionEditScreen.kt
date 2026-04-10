@@ -1,11 +1,12 @@
 package com.weiy.account.ui.screens
 
+import android.R.attr.category
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.text.Layout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -58,6 +60,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material3.IconButton
 import com.weiy.account.model.CategoryItem
 import com.weiy.account.model.CategoryNoteHistoryItem
 import com.weiy.account.model.TransactionType
@@ -113,7 +119,7 @@ fun TransactionEditScreen(
                     .navigationBarsPadding()
                     .verticalScroll(rememberScrollState())
                     .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 28.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 TransactionAmountSection(
                     amountInput = uiState.amountInput,
@@ -132,25 +138,12 @@ fun TransactionEditScreen(
                     color = MaterialTheme.colorScheme.outlineVariant
                 )
 
-                TransactionInfoRow(
-                    label = "日期时间",
-                    value = formatDateTime(uiState.dateTime),
-                    onClick = {
-                        openDateTimePicker(
-                            context = context,
-                            initialValue = uiState.dateTime,
-                            onSelected = viewModel::onDateTimeChange
-                        )
-                    }
-                )
-
                 OutlinedTextField(
                     value = uiState.note,
                     onValueChange = viewModel::onNoteChange,
                     label = { Text("备注") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
-                    minLines = 3
                 )
 
                 if (uiState.noteHistories.isNotEmpty()) {
@@ -167,6 +160,28 @@ fun TransactionEditScreen(
                         text = uiState.errorMessage.orEmpty(),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            openDateTimePicker(
+                                context = context,
+                                initialValue = uiState.dateTime,
+                                onSelected = viewModel::onDateTimeChange
+                            )
+                        },
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.DateRange, contentDescription = "日期时间")
+                    Text(
+                        text = formatDateTime(uiState.dateTime),
+                        color = TransactionEditHintColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.End
                     )
                 }
 
@@ -268,15 +283,7 @@ private fun TransactionNoteHistorySection(
         }
     }
 
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = "历史备注",
-            color = TransactionEditTextColor,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
-        )
-
+    Column {
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -543,42 +550,6 @@ private fun ManageCategoryGridItem(
             ),
             textAlign = TextAlign.Center
         )
-    }
-}
-
-@Composable
-private fun TransactionInfoRow(
-    label: String,
-    value: String,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick),
-        color = CategoryManageItemCircleColor,
-        shape = RoundedCornerShape(20.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 18.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = label,
-                color = TransactionEditTextColor,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium)
-            )
-            Text(
-                text = value,
-                color = TransactionEditHintColor,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.End
-            )
-        }
     }
 }
 
