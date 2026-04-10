@@ -314,6 +314,6 @@ private fun routeTitle(route: AppRoute): String {
         AppRoute.Stats -> "报表"
         AppRoute.Settings -> "设置"
         AppRoute.CategoryManage -> "分类管理"
-        is AppRoute.TransactionEdit -> if (route.transactionId > 0L) "编辑账目" else "新增账目"
+        is AppRoute.TransactionEdit -> if (route.transactionId > 0L) "编辑明细" else "新增明细"
     }
 }

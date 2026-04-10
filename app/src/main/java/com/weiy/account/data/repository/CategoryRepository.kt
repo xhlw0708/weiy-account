@@ -44,7 +44,7 @@ class CategoryRepository(
             return "默认分类不可删除"
         }
         if (categoryDao.countTransactionsByCategoryId(category.id) > 0) {
-            return "该分类下已有账目，无法删除"
+            return "该分类下已有明细，无法删除"
         }
         categoryDao.deleteCategoryById(category.id)
         return null

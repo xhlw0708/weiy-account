@@ -1,9 +1,12 @@
 package com.weiy.account.data.repository
 
-import com.weiy.account.data.local.dao.TransactionDao
+import androidx.room.withTransaction
+import com.weiy.account.data.local.database.AppDatabase
+import com.weiy.account.data.local.entity.CategoryNoteHistoryEntity
 import com.weiy.account.data.local.entity.MonthBillRaw
 import com.weiy.account.data.local.entity.TransactionWithCategory
 import com.weiy.account.data.local.entity.YearBillRaw
+import com.weiy.account.model.CategoryNoteHistoryItem
 import com.weiy.account.model.CategoryStat
 import com.weiy.account.model.MonthBill
 import com.weiy.account.model.MonthSummary
@@ -19,8 +22,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class TransactionRepository(
-    private val transactionDao: TransactionDao
+    private val database: AppDatabase
 ) {
+    private val transactionDao = database.transactionDao()
+    private val categoryNoteHistoryDao = database.categoryNoteHistoryDao()
 
     fun observeRecentTransactions(limit: Int = 6): Flow<List<TransactionRecord>> {
         return transactionDao.observeRecentTransactions(limit).map { list -> list.map { it.toModel() } }
@@ -80,6 +85,29 @@ class TransactionRepository(
         return transactionDao.getTransactionWithCategoryById(id)?.toModel()
     }
 
+    fun observeCategoryNoteHistories(categoryId: Long): Flow<List<CategoryNoteHistoryItem>> {
+        return categoryNoteHistoryDao.observeHistoriesByCategoryId(categoryId).map { histories ->
+            histories.map {
+                CategoryNoteHistoryItem(
+                    note = it.note,
+                    usageCount = it.usageCount
+                )
+            }
+        }
+    }
+
+    suspend fun deleteCategoryNoteHistory(
+        categoryId: Long,
+        note: String
+    ) {
+        val normalizedNote = note.trim()
+        if (normalizedNote.isBlank()) return
+        categoryNoteHistoryDao.deleteHistoryByCategoryIdAndNote(
+            categoryId = categoryId,
+            note = normalizedNote
+        )
+    }
+
     suspend fun addTransaction(
         type: TransactionType,
         amount: Double,
@@ -88,17 +116,25 @@ class TransactionRepository(
         dateTime: Long
     ): Long {
         val now = System.currentTimeMillis()
-        return transactionDao.insertTransaction(
-            com.weiy.account.data.local.entity.TransactionEntity(
-                type = type,
-                amount = amount,
+        return database.withTransaction {
+            val transactionId = transactionDao.insertTransaction(
+                com.weiy.account.data.local.entity.TransactionEntity(
+                    type = type,
+                    amount = amount,
+                    categoryId = categoryId,
+                    note = note,
+                    dateTime = dateTime,
+                    createdAt = now,
+                    updatedAt = now
+                )
+            )
+            recordCategoryNoteHistory(
                 categoryId = categoryId,
                 note = note,
-                dateTime = dateTime,
-                createdAt = now,
-                updatedAt = now
+                usedAt = dateTime
             )
-        )
+            transactionId
+        }
     }
 
     suspend fun updateTransaction(
@@ -109,17 +145,30 @@ class TransactionRepository(
         note: String,
         dateTime: Long
     ) {
-        val existing = transactionDao.getTransactionById(id) ?: return
-        transactionDao.updateTransaction(
-            existing.copy(
-                type = type,
-                amount = amount,
-                categoryId = categoryId,
-                note = note,
-                dateTime = dateTime,
-                updatedAt = System.currentTimeMillis()
+        database.withTransaction {
+            val existing = transactionDao.getTransactionById(id) ?: return@withTransaction
+            transactionDao.updateTransaction(
+                existing.copy(
+                    type = type,
+                    amount = amount,
+                    categoryId = categoryId,
+                    note = note,
+                    dateTime = dateTime,
+                    updatedAt = System.currentTimeMillis()
+                )
             )
-        )
+            val previousNote = existing.note.trim()
+            val currentNote = note.trim()
+            if (currentNote.isNotBlank() &&
+                (existing.categoryId != categoryId || previousNote != currentNote)
+            ) {
+                recordCategoryNoteHistory(
+                    categoryId = categoryId,
+                    note = currentNote,
+                    usedAt = dateTime
+                )
+            }
+        }
     }
 
     suspend fun deleteTransaction(id: Long) {
@@ -131,6 +180,41 @@ class TransactionRepository(
             start = monthStartMillis(month),
             end = monthEndMillis(month)
         )
+    }
+
+    private suspend fun recordCategoryNoteHistory(
+        categoryId: Long,
+        note: String,
+        usedAt: Long
+    ) {
+        val normalizedNote = note.trim()
+        if (normalizedNote.isBlank()) return
+
+        val now = System.currentTimeMillis()
+        val existing = categoryNoteHistoryDao.getHistoryByCategoryIdAndNote(
+            categoryId = categoryId,
+            note = normalizedNote
+        )
+        if (existing == null) {
+            categoryNoteHistoryDao.insertHistory(
+                CategoryNoteHistoryEntity(
+                    categoryId = categoryId,
+                    note = normalizedNote,
+                    usageCount = 1,
+                    lastUsedAt = usedAt,
+                    createdAt = now,
+                    updatedAt = now
+                )
+            )
+        } else {
+            categoryNoteHistoryDao.updateHistory(
+                existing.copy(
+                    usageCount = existing.usageCount + 1,
+                    lastUsedAt = maxOf(existing.lastUsedAt, usedAt),
+                    updatedAt = now
+                )
+            )
+        }
     }
 }
 

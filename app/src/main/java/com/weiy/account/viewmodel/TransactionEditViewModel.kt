@@ -8,6 +8,7 @@ import com.weiy.account.data.repository.CategoryRepository
 import com.weiy.account.data.repository.SettingsRepository
 import com.weiy.account.data.repository.TransactionRepository
 import com.weiy.account.model.CategoryItem
+import com.weiy.account.model.CategoryNoteHistoryItem
 import com.weiy.account.model.TransactionType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -27,6 +29,7 @@ data class TransactionEditUiState(
     val amountInput: String = "",
     val categoryId: Long? = null,
     val categories: List<CategoryItem> = emptyList(),
+    val noteHistories: List<CategoryNoteHistoryItem> = emptyList(),
     val note: String = "",
     val dateTime: Long = System.currentTimeMillis(),
     val errorMessage: String? = null
@@ -49,6 +52,7 @@ private data class EditCoreState(
 
 private data class EditAuxState(
     val categories: List<CategoryItem>,
+    val noteHistories: List<CategoryNoteHistoryItem>,
     val note: String,
     val dateTime: Long,
     val errorMessage: String?
@@ -80,6 +84,19 @@ class TransactionEditViewModel(
             initialValue = emptyList()
         )
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val noteHistories = categoryId.flatMapLatest { selectedCategoryId ->
+        if (selectedCategoryId == null) {
+            flowOf(emptyList())
+        } else {
+            transactionRepository.observeCategoryNoteHistories(selectedCategoryId)
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList()
+    )
+
     private val coreState = combine(
         isEditMode,
         type,
@@ -96,12 +113,14 @@ class TransactionEditViewModel(
 
     private val auxState = combine(
         categories,
+        noteHistories,
         note,
         dateTime,
         errorMessage
-    ) { categoriesValue, noteValue, dateTimeValue, errorValue ->
+    ) { categoriesValue, noteHistoriesValue, noteValue, dateTimeValue, errorValue ->
         EditAuxState(
             categories = categoriesValue,
+            noteHistories = noteHistoriesValue,
             note = noteValue,
             dateTime = dateTimeValue,
             errorMessage = errorValue
@@ -116,6 +135,7 @@ class TransactionEditViewModel(
             amountInput = core.amountInput,
             categoryId = core.categoryId,
             categories = aux.categories,
+            noteHistories = aux.noteHistories,
             note = aux.note,
             dateTime = aux.dateTime,
             errorMessage = aux.errorMessage
@@ -171,6 +191,20 @@ class TransactionEditViewModel(
         note.value = value
     }
 
+    fun applyNoteHistory(noteValue: String) {
+        note.value = noteValue
+    }
+
+    fun deleteNoteHistory(noteValue: String) {
+        val selectedCategoryId = categoryId.value ?: return
+        viewModelScope.launch {
+            transactionRepository.deleteCategoryNoteHistory(
+                categoryId = selectedCategoryId,
+                note = noteValue
+            )
+        }
+    }
+
     fun onDateTimeChange(value: Long) {
         dateTime.value = value
     }
@@ -181,11 +215,13 @@ class TransactionEditViewModel(
             errorMessage.value = "请输入有效金额"
             return
         }
+
         val selectedCategoryId = categoryId.value
         if (selectedCategoryId == null) {
             errorMessage.value = "请选择分类"
             return
         }
+
         errorMessage.value = null
 
         viewModelScope.launch {

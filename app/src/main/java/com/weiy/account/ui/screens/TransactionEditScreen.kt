@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,18 +17,24 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -38,6 +45,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,7 +57,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.weiy.account.model.CategoryItem
+import com.weiy.account.model.CategoryNoteHistoryItem
 import com.weiy.account.model.TransactionType
 import com.weiy.account.utils.formatDateTime
 import com.weiy.account.viewmodel.TransactionEditEvent
@@ -60,6 +71,8 @@ private val TransactionEditHintColor = Color(0xFF8A8A8A)
 private val TransactionEditIndicatorColor = Color(0xFF1F1F1F)
 private val TransactionEditDangerColor = Color(0xFFD95C54)
 private val TransactionEditPrimaryButtonColor = Color(0xFF1F1F1F)
+private val HistoryChipBackground = Color(0xFFF5F5F5)
+private val HistoryChipSelectedBackground = Color(0xFFE9EEF9)
 
 @Composable
 fun TransactionEditScreen(
@@ -83,10 +96,9 @@ fun TransactionEditScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.primaryContainer)
     ) {
         TransactionEditHeader(
-            title = if (uiState.isEditMode) "编辑账目" else "新增账目",
+            title = if (uiState.isEditMode) "编辑明细" else "新增明细",
             selectedType = uiState.type,
             onTypeSelected = viewModel::onTypeChange,
             onCancel = onFinished
@@ -115,7 +127,10 @@ fun TransactionEditScreen(
                     onOpenCategoryManage = onOpenCategoryManage
                 )
 
-                HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                HorizontalDivider(
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
 
                 TransactionInfoRow(
                     label = "日期时间",
@@ -138,6 +153,15 @@ fun TransactionEditScreen(
                     minLines = 3
                 )
 
+                if (uiState.noteHistories.isNotEmpty()) {
+                    TransactionNoteHistorySection(
+                        noteHistories = uiState.noteHistories,
+                        currentNote = uiState.note,
+                        onHistoryClick = viewModel::applyNoteHistory,
+                        onHistoryDelete = viewModel::deleteNoteHistory
+                    )
+                }
+
                 if (!uiState.errorMessage.isNullOrBlank()) {
                     Text(
                         text = uiState.errorMessage.orEmpty(),
@@ -157,7 +181,7 @@ fun TransactionEditScreen(
                     )
                 ) {
                     Text(
-                        text = if (uiState.isEditMode) "保存修改" else "保存账目",
+                        text = if (uiState.isEditMode) "保存修改" else "保存明细",
                         color = Color.White,
                         fontWeight = FontWeight.Medium
                     )
@@ -169,7 +193,7 @@ fun TransactionEditScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "删除账目",
+                            text = "删除明细",
                             color = TransactionEditDangerColor,
                             fontWeight = FontWeight.Medium
                         )
@@ -229,6 +253,98 @@ private fun TransactionCategorySection(
 }
 
 @Composable
+private fun TransactionNoteHistorySection(
+    noteHistories: List<CategoryNoteHistoryItem>,
+    currentNote: String,
+    onHistoryClick: (String) -> Unit,
+    onHistoryDelete: (String) -> Unit
+) {
+    var selectedNote by remember(noteHistories) { mutableStateOf<String?>(null) }
+    var deletingNote by remember(noteHistories) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(currentNote) {
+        if (selectedNote != null && currentNote != selectedNote) {
+            selectedNote = null
+        }
+    }
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "历史备注",
+            color = TransactionEditTextColor,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+        )
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(noteHistories, key = { it.note }) { item ->
+                val isSelected = selectedNote == item.note
+                val isDeleting = deletingNote == item.note
+                val interactionSource = remember(item.note) { MutableInteractionSource() }
+
+                Surface(
+                    modifier = Modifier.combinedClickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = {
+                            if (isDeleting) {
+                                onHistoryDelete(item.note)
+                                if (isSelected) {
+                                    selectedNote = null
+                                }
+                                deletingNote = null
+                            } else {
+                                selectedNote = if (isSelected) null else item.note
+                                deletingNote = null
+                                onHistoryClick(item.note)
+                            }
+                        },
+                        onLongClick = {
+                            deletingNote = if (isDeleting) null else item.note
+                        }
+                    ),
+                    shape = CircleShape,
+                    color = if (isSelected) HistoryChipSelectedBackground else HistoryChipBackground
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (isSelected && !isDeleting) {
+                            Icon(
+                                imageVector = Icons.Default.Done,
+                                contentDescription = "已选中",
+                                modifier = Modifier.size(18.dp),
+                                tint = TransactionEditTextColor
+                            )
+                        }
+
+                        Text(
+                            text = item.note,
+                            color = TransactionEditTextColor,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+
+                        if (isDeleting) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "删除备注",
+                                modifier = Modifier.size(18.dp),
+                                tint = TransactionEditDangerColor
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun TransactionEditHeader(
     title: String,
     selectedType: TransactionType,
@@ -236,49 +352,47 @@ private fun TransactionEditHeader(
     onCancel: () -> Unit
 ) {
     Box(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .padding(horizontal = 14.dp)
     ) {
+        Text(
+            text = title,
+            modifier = Modifier.align(Alignment.CenterStart),
+            color = TransactionEditTextColor,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold
+        )
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .padding(horizontal = 14.dp),
+            modifier = Modifier.align(Alignment.Center),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = title,
-                color = TransactionEditTextColor,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold
+            TransactionTypeTab(
+                label = "支出",
+                selected = selectedType == TransactionType.EXPENSE,
+                onClick = { onTypeSelected(TransactionType.EXPENSE) }
             )
-            Box(modifier = Modifier.size(width = 54.dp, height = 36.dp))
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                TransactionTypeTab(
-                    label = "支出",
-                    selected = selectedType == TransactionType.EXPENSE,
-                    onClick = { onTypeSelected(TransactionType.EXPENSE) }
-                )
-                TransactionTypeTab(
-                    label = "收入",
-                    selected = selectedType == TransactionType.INCOME,
-                    onClick = { onTypeSelected(TransactionType.INCOME) }
-                )
-            }
-            TextButton(
-                onClick = onCancel,
-                modifier = Modifier.size(width = 54.dp, height = 36.dp),
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Text(
-                    text = "取消",
-                    color = TransactionEditTextColor,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
+            TransactionTypeTab(
+                label = "收入",
+                selected = selectedType == TransactionType.INCOME,
+                onClick = { onTypeSelected(TransactionType.INCOME) }
+            )
+        }
+        TextButton(
+            onClick = onCancel,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .size(width = 54.dp, height = 36.dp),
+            contentPadding = PaddingValues(0.dp)
+        ) {
+            Text(
+                text = "取消",
+                color = TransactionEditTextColor,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }

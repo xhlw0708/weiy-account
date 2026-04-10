@@ -241,7 +241,7 @@ fun HomeScreen(
                     item {
                         ElevatedCard {
                             Text(
-                                text = "暂无账目，点击右下方按钮开始记录吧",
+                                text = "暂无明细，点击右下方按钮开始记录吧",
                                 modifier = Modifier.padding(16.dp),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant

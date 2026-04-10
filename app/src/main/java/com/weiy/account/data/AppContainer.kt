@@ -23,7 +23,7 @@ class AppContainer(context: Context) {
     private val database: AppDatabase = AppDatabase.getInstance(context)
     private val settingsDataSource = SettingsPreferencesDataSource(context)
 
-    val transactionRepository: TransactionRepository = TransactionRepository(database.transactionDao())
+    val transactionRepository: TransactionRepository = TransactionRepository(database)
     val categoryRepository: CategoryRepository = CategoryRepository(database.categoryDao())
     val settingsRepository: SettingsRepository = SettingsRepository(settingsDataSource)
 
