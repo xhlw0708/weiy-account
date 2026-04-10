@@ -83,7 +83,9 @@ fun AppMain(
 
     val currentRoute = (backStack.lastOrNull() as? AppRoute) ?: startRoute
     val canGoBack = backStack.size > 1
-    val showTopBar = currentRoute != AppRoute.Onboarding && currentRoute != AppRoute.CategoryManage
+    val showTopBar = currentRoute != AppRoute.Onboarding &&
+        currentRoute != AppRoute.CategoryManage &&
+        currentRoute !is AppRoute.TransactionEdit
     val showBottomBar = currentRoute.toStartDestinationOrNull() != null
     val isHomeRoute = currentRoute == AppRoute.Home
     var homeFabScrollUpEnabled by remember { mutableStateOf(false) }
@@ -133,7 +135,7 @@ fun AppMain(
                     }
                 },
                 actions = {
-                    if (!canGoBack) {
+                    if (currentRoute == AppRoute.Home) {
                         IconButton(onClick = {}) {
                             Icon(Icons.Default.Search, contentDescription = "搜索")
                         }
