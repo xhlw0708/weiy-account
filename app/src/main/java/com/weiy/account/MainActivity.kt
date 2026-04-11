@@ -63,7 +63,10 @@ class MainActivity : ComponentActivity() {
                 }
             } else {
                 val settingsViewModel: SettingsViewModel = viewModel(
-                    factory = SettingsViewModel.factory(container.settingsRepository)
+                    factory = SettingsViewModel.factory(
+                        settingsRepository = container.settingsRepository,
+                        dataTransferRepository = container.dataTransferRepository
+                    )
                 )
                 val settings by settingsViewModel.uiState.collectAsState()
 

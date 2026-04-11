@@ -39,8 +39,28 @@ interface CategoryDao {
     )
     fun observeCategoriesByType(type: TransactionType): Flow<List<CategoryEntity>>
 
+    @Query(
+        """
+        SELECT * FROM categories
+        ORDER BY type ASC, sortOrder ASC, id ASC
+        """
+    )
+    suspend fun getAllCategories(): List<CategoryEntity>
+
     @Query("SELECT * FROM categories WHERE id = :id LIMIT 1")
     suspend fun getCategoryById(id: Long): CategoryEntity?
+
+    @Query(
+        """
+        SELECT * FROM categories
+        WHERE name = :name AND type = :type
+        LIMIT 1
+        """
+    )
+    suspend fun getCategoryByNameAndType(
+        name: String,
+        type: TransactionType
+    ): CategoryEntity?
 
     @Query(
         """

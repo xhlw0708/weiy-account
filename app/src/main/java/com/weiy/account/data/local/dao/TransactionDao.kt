@@ -60,6 +60,15 @@ interface TransactionDao {
 
     @Query(
         """
+        SELECT *
+        FROM transactions
+        ORDER BY dateTime ASC, id ASC
+        """
+    )
+    suspend fun getAllTransactions(): List<TransactionEntity>
+
+    @Query(
+        """
         SELECT t.*, c.name AS category_name, c.type AS category_type
         FROM transactions t
         INNER JOIN categories c ON t.categoryId = c.id

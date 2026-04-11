@@ -31,6 +31,15 @@ interface CategoryNoteHistoryDao {
         """
         SELECT *
         FROM category_note_history
+        ORDER BY categoryId ASC, usageCount DESC, lastUsedAt DESC, id ASC
+        """
+    )
+    suspend fun getAllHistories(): List<CategoryNoteHistoryEntity>
+
+    @Query(
+        """
+        SELECT *
+        FROM category_note_history
         WHERE categoryId = :categoryId AND note = :note
         LIMIT 1
         """
