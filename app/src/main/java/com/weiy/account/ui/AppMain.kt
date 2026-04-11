@@ -209,6 +209,17 @@ fun AppMain(
                     initialContentExit = ExitTransition.None
                 )
             },
+            predictivePopTransitionSpec = { swipeEdge ->
+                if (isPredictiveBackDisabledRoute(initialState.key)) {
+                    ContentTransform(
+                        targetContentEnter = EnterTransition.None,
+                        initialContentExit = ExitTransition.None
+                    )
+                } else {
+                    androidx.navigation3.ui.defaultPredictivePopTransitionSpec<NavKey>()
+                        .invoke(this, swipeEdge)
+                }
+            },
             onBack = {
                 if (backStack.size > 1) {
                     backStack.removeLastOrNull()
@@ -316,4 +327,10 @@ private fun routeTitle(route: AppRoute): String {
         AppRoute.CategoryManage -> "分类管理"
         is AppRoute.TransactionEdit -> if (route.transactionId > 0L) "编辑明细" else "新增明细"
     }
+}
+
+private fun isPredictiveBackDisabledRoute(route: Any?): Boolean {
+    val routeKey = route?.toString() ?: return false
+    return routeKey == AppRoute.CategoryManage.toString() ||
+        routeKey.startsWith(AppRoute.TransactionEdit().toString().substringBefore('('))
 }

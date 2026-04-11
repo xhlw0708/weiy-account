@@ -1,12 +1,12 @@
 package com.weiy.account.ui.screens
 
-import android.R.attr.category
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
-import android.text.Layout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,9 +16,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -31,7 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -46,27 +46,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material3.IconButton
 import com.weiy.account.model.CategoryItem
 import com.weiy.account.model.CategoryNoteHistoryItem
 import com.weiy.account.model.TransactionType
+import com.weiy.account.ui.components.LongPressActionPopup
+import com.weiy.account.ui.components.TopAnchorCenterPopupPositionProvider
 import com.weiy.account.utils.formatDateTime
 import com.weiy.account.viewmodel.TransactionEditEvent
 import com.weiy.account.viewmodel.TransactionEditViewModel
@@ -79,6 +77,8 @@ private val TransactionEditDangerColor = Color(0xFFD95C54)
 private val TransactionEditPrimaryButtonColor = Color(0xFF1F1F1F)
 private val HistoryChipBackground = Color(0xFFF5F5F5)
 private val HistoryChipSelectedBackground = Color(0xFFE9EEF9)
+private val HistoryDeleteMenuBackground = Color(0xFF1F1F1F)
+private val HistoryDeleteMenuTextColor = Color.White
 
 @Composable
 fun TransactionEditScreen(
@@ -275,7 +275,13 @@ private fun TransactionNoteHistorySection(
     onHistoryDelete: (String) -> Unit
 ) {
     var selectedNote by remember(noteHistories) { mutableStateOf<String?>(null) }
-    var deletingNote by remember(noteHistories) { mutableStateOf<String?>(null) }
+    var expandedNoteMenu by remember(noteHistories) { mutableStateOf<String?>(null) }
+    val density = LocalDensity.current
+    val popupPositionProvider = remember(density) {
+        TopAnchorCenterPopupPositionProvider(
+            verticalSpacing = with(density) { 8.dp.roundToPx() }
+        )
+    }
 
     LaunchedEffect(currentNote) {
         if (selectedNote != null && currentNote != selectedNote) {
@@ -289,60 +295,74 @@ private fun TransactionNoteHistorySection(
         ) {
             items(noteHistories, key = { it.note }) { item ->
                 val isSelected = selectedNote == item.note
-                val isDeleting = deletingNote == item.note
+                val isMenuExpanded = expandedNoteMenu == item.note
                 val interactionSource = remember(item.note) { MutableInteractionSource() }
 
-                Surface(
-                    modifier = Modifier.combinedClickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = {
-                            if (isDeleting) {
-                                onHistoryDelete(item.note)
-                                if (isSelected) {
-                                    selectedNote = null
-                                }
-                                deletingNote = null
-                            } else {
-                                selectedNote = if (isSelected) null else item.note
-                                deletingNote = null
-                                onHistoryClick(item.note)
-                            }
-                        },
-                        onLongClick = {
-                            deletingNote = if (isDeleting) null else item.note
-                        }
-                    ),
-                    shape = CircleShape,
-                    color = if (isSelected) HistoryChipSelectedBackground else HistoryChipBackground
+                Box(
+                    modifier = Modifier.wrapContentSize(),
+                    contentAlignment = Alignment.TopCenter
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Surface(
+                        modifier = Modifier.combinedClickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                            onClick = {
+                                selectedNote = if (isSelected) null else item.note
+                                expandedNoteMenu = null
+                                onHistoryClick(item.note)
+                            },
+                            onLongClick = {
+                                expandedNoteMenu = if (isMenuExpanded) null else item.note
+                            }
+                        ),
+                        shape = CircleShape,
+                        color = if (isSelected) HistoryChipSelectedBackground else HistoryChipBackground
                     ) {
-                        if (isSelected && !isDeleting) {
-                            Icon(
-                                imageVector = Icons.Default.Done,
-                                contentDescription = "已选中",
-                                modifier = Modifier.size(18.dp),
-                                tint = TransactionEditTextColor
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            if (isSelected && !isMenuExpanded) {
+                                Icon(
+                                    imageVector = Icons.Default.Done,
+                                    contentDescription = "已选中",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = TransactionEditTextColor
+                                )
+                            }
+
+                            Text(
+                                text = item.note,
+                                color = TransactionEditTextColor,
+                                style = MaterialTheme.typography.bodyMedium
                             )
                         }
+                    }
 
-                        Text(
-                            text = item.note,
-                            color = TransactionEditTextColor,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-
-                        if (isDeleting) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "删除备注",
-                                modifier = Modifier.size(18.dp),
-                                tint = TransactionEditDangerColor
-                            )
+                    if (isMenuExpanded) {
+                        LongPressActionPopup(
+                            popupPositionProvider = popupPositionProvider,
+                            onDismissRequest = { expandedNoteMenu = null },
+                            shape = RoundedCornerShape(18.dp),
+                            containerColor = HistoryDeleteMenuBackground
+                        ) {
+                            TextButton(
+                                onClick = {
+                                    onHistoryDelete(item.note)
+                                    if (isSelected) {
+                                        selectedNote = null
+                                    }
+                                    expandedNoteMenu = null
+                                },
+                                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 0.dp)
+                            ) {
+                                Text(
+                                    text = "删除",
+                                    color = HistoryDeleteMenuTextColor,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
+                                )
+                            }
                         }
                     }
                 }

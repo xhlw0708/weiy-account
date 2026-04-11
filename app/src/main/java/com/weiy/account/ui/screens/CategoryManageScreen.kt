@@ -47,11 +47,11 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
 import com.weiy.account.model.CategoryItem
 import com.weiy.account.model.TransactionType
+import com.weiy.account.ui.components.LongPressActionPopup
+import com.weiy.account.ui.components.TopAnchorCenterPopupPositionProvider
 import com.weiy.account.viewmodel.CategoryManageViewModel
 
 private val CategoryTextColor = Color(0xFF3E3E3E)
@@ -288,7 +288,7 @@ private fun CategoryGridItem(
         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)
     }
     val popupPositionProvider = remember(density) {
-        CategoryActionMenuPositionProvider(
+        TopAnchorCenterPopupPositionProvider(
             verticalSpacing = with(density) { 8.dp.roundToPx() }
         )
     }
@@ -336,21 +336,16 @@ private fun CategoryGridItem(
             }
 
             if (menuExpanded) {
-                Popup(
+                LongPressActionPopup(
                     popupPositionProvider = popupPositionProvider,
                     onDismissRequest = { menuExpanded = false },
-                    properties = PopupProperties(focusable = true)
+                    shape = MaterialTheme.shapes.medium,
+                    containerColor = menuBackgroundColor
                 ) {
-                    Surface(
-                        shape = MaterialTheme.shapes.medium,
-                        color = menuBackgroundColor,
-                        shadowElevation = 10.dp,
-                        tonalElevation = 0.dp
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
                             CategoryActionMenuItem(
                                 label = "编辑",
                                 color = menuPrimaryTextColor,
@@ -370,7 +365,6 @@ private fun CategoryGridItem(
                                 }
                             )
                         }
-                    }
                 }
             }
         }
