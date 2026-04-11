@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
@@ -184,7 +185,7 @@ fun SettingsScreen(
     ) {
         item {
             SettingsSectionTitle(
-                title = "基础设置",
+                title = "功能设置",
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)
             )
         }
@@ -210,6 +211,33 @@ fun SettingsScreen(
                     title = "分类管理",
                     subtitle = "管理收入和支出的分类",
                     onClick = onOpenCategoryManage
+                )
+                SettingsDivider()
+                SettingsSwitchRow(
+                    icon = Icons.Default.DateRange,
+                    title = "日历设置",
+                    subtitle = "开启后将在首页显示日历功能入口",
+                    checked = false,
+                    onCheckedChange = {}
+                )
+            }
+        }
+
+        item {
+            SettingsSectionTitle(
+                title = "个性化设置",
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        }
+
+        item {
+            SettingsGroupCard {
+                SettingsNavigationRow(
+                    icon = ImageVector.vectorResource(R.drawable.ic_alarm),
+                    title = "定时提醒",
+                    subtitle = "定时提醒记账时间",
+                    enabled = true,
+                    onClick = {}
                 )
             }
         }
@@ -279,6 +307,41 @@ fun SettingsScreen(
                 )
             }
         }
+
+        item {
+            SettingsSectionTitle(
+                title = "快捷使用",
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        }
+
+        item {
+            SettingsGroupCard {
+                SettingsNavigationRow(
+                    icon = ImageVector.vectorResource(R.drawable.ic_timer),
+                    title = "定时记账",
+                    subtitle = "定时自动记账",
+                    enabled = true,
+                    onClick = {}
+                )
+                SettingsDivider()
+                SettingsNavigationRow(
+                    icon = ImageVector.vectorResource(R.drawable.ic_widget),
+                    title = "桌面小部件",
+                    subtitle = "",
+                    enabled = true,
+                    onClick = {}
+                )
+                SettingsDivider()
+                SettingsNavigationRow(
+                    icon = ImageVector.vectorResource(R.drawable.ic_notification_panel),
+                    title = "通知栏快捷入口",
+                    subtitle = "",
+                    enabled = true,
+                    onClick = {}
+                )
+            }
+        }
     }
 }
 
@@ -300,9 +363,7 @@ private fun SettingsGroupCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
@@ -326,7 +387,7 @@ private fun SettingsNavigationRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
