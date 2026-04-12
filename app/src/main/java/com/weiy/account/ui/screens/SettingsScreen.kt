@@ -1,5 +1,11 @@
 package com.weiy.account.ui.screens
 
+import android.Manifest
+import android.app.TimePickerDialog
+import android.content.Context
+import android.content.pm.PackageManager
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -18,7 +24,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
@@ -36,6 +41,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,15 +49,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.weiy.account.BuildConfig
 import com.weiy.account.R
 import com.weiy.account.model.DataTransferFormat
 import com.weiy.account.model.StartDestination
 import com.weiy.account.model.TransactionType
+import com.weiy.account.reminder.AccountingReminderScheduler
 import com.weiy.account.viewmodel.DataTransferUiState
 import com.weiy.account.viewmodel.SettingsViewModel
 
@@ -73,8 +82,15 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.uiState.collectAsState()
     val transferState by viewModel.dataTransferState.collectAsState()
+    val context = LocalContext.current
+    val reminderScheduler = remember(context) { AccountingReminderScheduler(context) }
+
     var pendingAction by remember { mutableStateOf<DataTransferAction?>(null) }
     var optionDialog by remember { mutableStateOf<SettingsOptionDialog?>(null) }
+    var reminderDialogVisible by remember { mutableStateOf(false) }
+    var reminderHour by remember { mutableIntStateOf(settings.reminderHour) }
+    var reminderMinute by remember { mutableIntStateOf(settings.reminderMinute) }
+    var pendingReminderSave by remember { mutableStateOf(false) }
 
     val importExcelLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -102,6 +118,31 @@ fun SettingsScreen(
     ) { uri ->
         if (uri != null) {
             viewModel.exportData(uri = uri, format = DataTransferFormat.CSV)
+        }
+    }
+    val exactAlarmSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            Toast.makeText(
+                context,
+                "未授予通知权限，提醒通知可能无法显示",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+        if (pendingReminderSave) {
+            pendingReminderSave = false
+            saveDailyReminder(
+                context = context,
+                viewModel = viewModel,
+                reminderScheduler = reminderScheduler,
+                hour = reminderHour,
+                minute = reminderMinute
+            )
+            reminderDialogVisible = false
         }
     }
 
@@ -135,6 +176,56 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+
+    if (reminderDialogVisible) {
+        ReminderSettingsDialog(
+            reminderEnabled = settings.reminderEnabled,
+            reminderHour = reminderHour,
+            reminderMinute = reminderMinute,
+            canScheduleExactReminders = reminderScheduler.canScheduleExactReminders(),
+            onDismiss = {
+                pendingReminderSave = false
+                reminderDialogVisible = false
+            },
+            onPickTime = {
+                openReminderTimePicker(
+                    context = context,
+                    initialHour = reminderHour,
+                    initialMinute = reminderMinute
+                ) { hour, minute ->
+                    reminderHour = hour
+                    reminderMinute = minute
+                }
+            },
+            onOpenExactAlarmSettings = {
+                exactAlarmSettingsLauncher.launch(reminderScheduler.createExactAlarmSettingsIntent())
+            },
+            onDisableReminder = {
+                pendingReminderSave = false
+                disableDailyReminder(
+                    context = context,
+                    viewModel = viewModel,
+                    reminderScheduler = reminderScheduler
+                )
+                reminderDialogVisible = false
+            },
+            onSaveReminder = {
+                if (hasNotificationPermission(context)) {
+                    saveDailyReminder(
+                        context = context,
+                        viewModel = viewModel,
+                        reminderScheduler = reminderScheduler,
+                        hour = reminderHour,
+                        minute = reminderMinute
+                    )
+                    reminderDialogVisible = false
+                } else {
+                    pendingReminderSave = true
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        )
     }
 
     pendingAction?.let { action ->
@@ -235,9 +326,13 @@ fun SettingsScreen(
                 SettingsNavigationRow(
                     icon = ImageVector.vectorResource(R.drawable.ic_alarm),
                     title = "定时提醒",
-                    subtitle = "定时提醒记账时间",
+                    subtitle = settings.reminderStatusLabel(),
                     enabled = true,
-                    onClick = {}
+                    onClick = {
+                        reminderHour = settings.reminderHour
+                        reminderMinute = settings.reminderMinute
+                        reminderDialogVisible = true
+                    }
                 )
             }
         }
@@ -346,6 +441,90 @@ fun SettingsScreen(
 }
 
 @Composable
+private fun ReminderSettingsDialog(
+    reminderEnabled: Boolean,
+    reminderHour: Int,
+    reminderMinute: Int,
+    canScheduleExactReminders: Boolean,
+    onDismiss: () -> Unit,
+    onPickTime: () -> Unit,
+    onOpenExactAlarmSettings: () -> Unit,
+    onDisableReminder: () -> Unit,
+    onSaveReminder: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("定时提醒") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = if (reminderEnabled) {
+                        "当前已开启每天 ${formatReminderTime(reminderHour, reminderMinute)} 的提醒"
+                    } else {
+                        "当前未开启提醒，保存后将每天按所选时间提醒记账"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onPickTime)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "提醒时间",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = formatReminderTime(reminderHour, reminderMinute),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                if (!canScheduleExactReminders) {
+                    Text(
+                        text = "系统未开启精确定时权限，提醒可能会有延迟。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    TextButton(
+                        onClick = onOpenExactAlarmSettings,
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("开启准时提醒")
+                    }
+                }
+                TextButton(
+                    onClick = onDisableReminder,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("关闭提醒")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onSaveReminder) {
+                Text("保存提醒")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
+
+@Composable
 private fun SettingsSectionTitle(
     title: String,
     modifier: Modifier = Modifier
@@ -399,7 +578,11 @@ private fun SettingsNavigationRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (enabled) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
             )
             if (!subtitle.isNullOrBlank()) {
                 Text(
@@ -645,4 +828,73 @@ private fun DataTransferFormatDialog(
             }
         }
     )
+}
+
+private fun saveDailyReminder(
+    context: Context,
+    viewModel: SettingsViewModel,
+    reminderScheduler: AccountingReminderScheduler,
+    hour: Int,
+    minute: Int
+) {
+    Log.d(
+        AccountingReminderScheduler.LOG_TAG,
+        "saveDailyReminder(): persist and schedule time=%02d:%02d".format(hour, minute)
+    )
+    viewModel.updateDailyReminder(hour, minute)
+    reminderScheduler.cancelReminder()
+    reminderScheduler.scheduleNextReminder(hour, minute)
+    val message = if (reminderScheduler.canScheduleExactReminders()) {
+        "已开启每天 ${formatReminderTime(hour, minute)} 的记账提醒"
+    } else {
+        "已保存提醒，系统可能不会准点触发"
+    }
+    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+}
+
+private fun disableDailyReminder(
+    context: Context,
+    viewModel: SettingsViewModel,
+    reminderScheduler: AccountingReminderScheduler
+) {
+    Log.d(AccountingReminderScheduler.LOG_TAG, "disableDailyReminder()")
+    viewModel.disableDailyReminder()
+    reminderScheduler.cancelReminder()
+    Toast.makeText(context, "已关闭记账提醒", Toast.LENGTH_SHORT).show()
+}
+
+private fun hasNotificationPermission(context: Context): Boolean {
+    return ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.POST_NOTIFICATIONS
+    ) == PackageManager.PERMISSION_GRANTED
+}
+
+private fun openReminderTimePicker(
+    context: Context,
+    initialHour: Int,
+    initialMinute: Int,
+    onSelected: (Int, Int) -> Unit
+) {
+    TimePickerDialog(
+        context,
+        { _, hourOfDay, minute ->
+            onSelected(hourOfDay, minute)
+        },
+        initialHour,
+        initialMinute,
+        true
+    ).show()
+}
+
+private fun formatReminderTime(hour: Int, minute: Int): String {
+    return String.format("%02d:%02d", hour, minute)
+}
+
+private fun com.weiy.account.model.AppSettings.reminderStatusLabel(): String {
+    return if (reminderEnabled) {
+        "每天 ${formatReminderTime(reminderHour, reminderMinute)} 提醒记账"
+    } else {
+        "未开启"
+    }
 }

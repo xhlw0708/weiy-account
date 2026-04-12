@@ -23,11 +23,19 @@ class SettingsPreferencesDataSource(context: Context) {
             ?.let { runCatching { StartDestination.valueOf(it) }.getOrNull() }
             ?: StartDestination.HOME
         val darkMode = preferences.getBoolean(KEY_DARK_MODE_ENABLED, false)
+        val reminderEnabled = preferences.getBoolean(KEY_REMINDER_ENABLED, false)
+        val reminderHour = preferences.getInt(KEY_REMINDER_HOUR, DEFAULT_REMINDER_HOUR)
+            .coerceIn(0, 23)
+        val reminderMinute = preferences.getInt(KEY_REMINDER_MINUTE, DEFAULT_REMINDER_MINUTE)
+            .coerceIn(0, 59)
         return AppSettings(
             onboardingShown = onboardingShown,
             defaultTransactionType = defaultType,
             defaultStartDestination = defaultStart,
-            darkModeEnabled = darkMode
+            darkModeEnabled = darkMode,
+            reminderEnabled = reminderEnabled,
+            reminderHour = reminderHour,
+            reminderMinute = reminderMinute
         )
     }
 
@@ -45,6 +53,18 @@ class SettingsPreferencesDataSource(context: Context) {
 
     fun setDarkModeEnabled(value: Boolean) {
         preferences.edit { putBoolean(KEY_DARK_MODE_ENABLED, value) }
+    }
+
+    fun updateDailyReminder(hour: Int, minute: Int) {
+        preferences.edit {
+            putBoolean(KEY_REMINDER_ENABLED, true)
+            putInt(KEY_REMINDER_HOUR, hour.coerceIn(0, 23))
+            putInt(KEY_REMINDER_MINUTE, minute.coerceIn(0, 59))
+        }
+    }
+
+    fun disableDailyReminder() {
+        preferences.edit { putBoolean(KEY_REMINDER_ENABLED, false) }
     }
 
     fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
@@ -86,9 +106,14 @@ class SettingsPreferencesDataSource(context: Context) {
         const val KEY_DEFAULT_TRANSACTION_TYPE = "defaultTransactionType"
         const val KEY_DEFAULT_START_DESTINATION = "defaultStartDestination"
         const val KEY_DARK_MODE_ENABLED = "darkModeEnabled"
+        const val KEY_REMINDER_ENABLED = "reminderEnabled"
+        const val KEY_REMINDER_HOUR = "reminderHour"
+        const val KEY_REMINDER_MINUTE = "reminderMinute"
         const val KEY_MIN_BILL_YEAR = "minBillYear"
         const val KEY_MAX_BILL_YEAR = "maxBillYear"
         const val KEY_DEMO_DATA_2026_FEB_MAR_SEEDED = "demoData2026FebMarSeeded"
         private const val DEFAULT_MIN_BILL_YEAR = 2002
+        private const val DEFAULT_REMINDER_HOUR = 21
+        private const val DEFAULT_REMINDER_MINUTE = 0
     }
 }

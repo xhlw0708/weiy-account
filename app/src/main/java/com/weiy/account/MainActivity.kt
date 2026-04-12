@@ -1,5 +1,6 @@
-﻿package com.weiy.account
+package com.weiy.account
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -9,31 +10,37 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.weiy.account.data.AppContainer
 import com.weiy.account.ui.AppMain
 import com.weiy.account.ui.theme.WeiyAccountTheme
 import com.weiy.account.viewmodel.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.compose.runtime.LaunchedEffect
 
 class MainActivity : ComponentActivity() {
+    private var openTransactionEditRequestKey by mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        if (consumeOpenTransactionEditExtra(intent)) {
+            openTransactionEditRequestKey = 1
+        }
         enableEdgeToEdge()
         setContent {
             var appContainer by remember { mutableStateOf<AppContainer?>(null) }
@@ -76,11 +83,32 @@ class MainActivity : ComponentActivity() {
                 ) {
                     AppMain(
                         appContainer = container,
-                        settingsViewModel = settingsViewModel
+                        settingsViewModel = settingsViewModel,
+                        openTransactionEditRequestKey = openTransactionEditRequestKey
                     )
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (consumeOpenTransactionEditExtra(intent)) {
+            openTransactionEditRequestKey += 1
+        }
+    }
+
+    private fun consumeOpenTransactionEditExtra(intent: Intent?): Boolean {
+        val shouldOpen = intent?.getBooleanExtra(EXTRA_OPEN_TRANSACTION_EDIT, false) == true
+        if (shouldOpen) {
+            intent?.removeExtra(EXTRA_OPEN_TRANSACTION_EDIT)
+        }
+        return shouldOpen
+    }
+
+    companion object {
+        const val EXTRA_OPEN_TRANSACTION_EDIT = "extra_open_transaction_edit"
     }
 }
 
@@ -111,4 +139,3 @@ private fun StartupFallbackScreen(startupError: Throwable?) {
         }
     }
 }
-

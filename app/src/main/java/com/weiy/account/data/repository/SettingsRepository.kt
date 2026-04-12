@@ -53,6 +53,16 @@ class SettingsRepository(
         _settings.value = dataSource.readSettings()
     }
 
+    fun updateDailyReminder(hour: Int, minute: Int) {
+        dataSource.updateDailyReminder(hour, minute)
+        _settings.value = dataSource.readSettings()
+    }
+
+    fun disableDailyReminder() {
+        dataSource.disableDailyReminder()
+        _settings.value = dataSource.readSettings()
+    }
+
     fun refreshBillYearRange() {
         _billYearRange.value = dataSource.readBillYearRange()
     }

@@ -46,6 +46,14 @@ class SettingsViewModel(
         settingsRepository.setDarkModeEnabled(enabled)
     }
 
+    fun updateDailyReminder(hour: Int, minute: Int) {
+        settingsRepository.updateDailyReminder(hour, minute)
+    }
+
+    fun disableDailyReminder() {
+        settingsRepository.disableDailyReminder()
+    }
+
     fun importData(
         uri: Uri,
         format: DataTransferFormat

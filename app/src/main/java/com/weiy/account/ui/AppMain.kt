@@ -1,4 +1,5 @@
 package com.weiy.account.ui
+
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -27,6 +28,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -69,7 +71,8 @@ private data class BottomItem(
 @Composable
 fun AppMain(
     appContainer: AppContainer,
-    settingsViewModel: SettingsViewModel
+    settingsViewModel: SettingsViewModel,
+    openTransactionEditRequestKey: Int = 0
 ) {
     val settings by settingsViewModel.uiState.collectAsState()
     val startRoute = remember {
@@ -90,6 +93,16 @@ fun AppMain(
     val isHomeRoute = currentRoute == AppRoute.Home
     var homeFabScrollUpEnabled by remember { mutableStateOf(false) }
     var homeScrollToTopSignal by remember { mutableIntStateOf(0) }
+    var handledOpenTransactionEditRequestKey by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(openTransactionEditRequestKey, settings.onboardingShown) {
+        if (!settings.onboardingShown) return@LaunchedEffect
+        if (openTransactionEditRequestKey == 0) return@LaunchedEffect
+        if (openTransactionEditRequestKey == handledOpenTransactionEditRequestKey) return@LaunchedEffect
+
+        handledOpenTransactionEditRequestKey = openTransactionEditRequestKey
+        backStack.add(AppRoute.TransactionEdit())
+    }
 
     val bottomItems = remember {
         listOf(
@@ -121,26 +134,29 @@ fun AppMain(
         topBar = {
             if (showTopBar) {
                 TopAppBar(
-                title = {
-                    Text(
-                        text = routeTitle(currentRoute),
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                },
-                navigationIcon = {
-                    if (canGoBack) {
-                        IconButton(onClick = { backStack.removeLastOrNull() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    title = {
+                        Text(
+                            text = routeTitle(currentRoute),
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                    },
+                    navigationIcon = {
+                        if (canGoBack) {
+                            IconButton(onClick = { backStack.removeLastOrNull() }) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "返回"
+                                )
+                            }
+                        }
+                    },
+                    actions = {
+                        if (currentRoute == AppRoute.Home) {
+                            IconButton(onClick = {}) {
+                                Icon(Icons.Default.Search, contentDescription = "搜索")
+                            }
                         }
                     }
-                },
-                actions = {
-                    if (currentRoute == AppRoute.Home) {
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Default.Search, contentDescription = "搜索")
-                        }
-                    }
-                }
                 )
             }
         },
@@ -187,7 +203,11 @@ fun AppMain(
                     shape = CircleShape
                 ) {
                     Icon(
-                        imageVector = if (showScrollToTopAction) Icons.Default.KeyboardArrowUp else Icons.Default.Add,
+                        imageVector = if (showScrollToTopAction) {
+                            Icons.Default.KeyboardArrowUp
+                        } else {
+                            Icons.Default.Add
+                        },
                         contentDescription = null
                     )
                 }
