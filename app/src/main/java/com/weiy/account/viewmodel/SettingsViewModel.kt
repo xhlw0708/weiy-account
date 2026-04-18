@@ -46,6 +46,10 @@ class SettingsViewModel(
         settingsRepository.setDarkModeEnabled(enabled)
     }
 
+    fun setNotificationQuickEntryEnabled(enabled: Boolean) {
+        settingsRepository.setNotificationQuickEntryEnabled(enabled)
+    }
+
     fun updateDailyReminder(hour: Int, minute: Int) {
         settingsRepository.updateDailyReminder(hour, minute)
     }

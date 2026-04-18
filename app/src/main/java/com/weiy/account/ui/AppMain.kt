@@ -3,6 +3,10 @@ package com.weiy.account.ui
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -35,7 +39,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
@@ -94,6 +100,8 @@ fun AppMain(
     var homeFabScrollUpEnabled by remember { mutableStateOf(false) }
     var homeScrollToTopSignal by remember { mutableIntStateOf(0) }
     var handledOpenTransactionEditRequestKey by remember { mutableIntStateOf(0) }
+    var fabHiddenByLongPress by rememberSaveable { mutableStateOf(false) }
+    var fabLongPressTriggered by remember { mutableStateOf(false) }
 
     LaunchedEffect(openTransactionEditRequestKey, settings.onboardingShown) {
         if (!settings.onboardingShown) return@LaunchedEffect
@@ -102,6 +110,13 @@ fun AppMain(
 
         handledOpenTransactionEditRequestKey = openTransactionEditRequestKey
         backStack.add(AppRoute.TransactionEdit())
+    }
+
+    LaunchedEffect(isHomeRoute) {
+        if (isHomeRoute) {
+            fabHiddenByLongPress = false
+            fabLongPressTriggered = false
+        }
     }
 
     val bottomItems = remember {
@@ -188,10 +203,30 @@ fun AppMain(
             }
         },
         floatingActionButton = {
-            if (showBottomBar) {
+            val showFab = showBottomBar && (isHomeRoute || !fabHiddenByLongPress)
+            if (showFab) {
                 val showScrollToTopAction = isHomeRoute && homeFabScrollUpEnabled
                 FloatingActionButton(
+                    modifier = if (isHomeRoute) {
+                        Modifier
+                    } else {
+                        Modifier.pointerInput(isHomeRoute) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                val longPress = awaitLongPressOrCancellation(down.id)
+                                if (longPress != null) {
+                                    fabHiddenByLongPress = true
+                                    fabLongPressTriggered = true
+                                    waitForUpOrCancellation()
+                                }
+                            }
+                        }
+                    },
                     onClick = {
+                        if (fabLongPressTriggered) {
+                            fabLongPressTriggered = false
+                            return@FloatingActionButton
+                        }
                         if (showScrollToTopAction) {
                             homeScrollToTopSignal += 1
                         } else {

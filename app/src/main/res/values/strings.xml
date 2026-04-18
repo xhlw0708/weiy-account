@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">WeiyAccount</string>
+    <string name="quick_settings_tile_label">weiy account</string>
+    <string name="quick_settings_tile_subtitle">add transaction</string>
 </resources>

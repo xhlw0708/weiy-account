@@ -26,10 +26,12 @@ import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.weiy.account.data.AppContainer
+import com.weiy.account.quicksettings.QuickSettingsEntryController
 import com.weiy.account.ui.AppMain
 import com.weiy.account.ui.theme.WeiyAccountTheme
 import com.weiy.account.viewmodel.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
@@ -76,6 +78,27 @@ class MainActivity : ComponentActivity() {
                     )
                 )
                 val settings by settingsViewModel.uiState.collectAsState()
+                var previousQuickEntryEnabled by remember {
+                    mutableStateOf(settings.notificationQuickEntryEnabled)
+                }
+                LaunchedEffect(settings.notificationQuickEntryEnabled) {
+                    if (!settings.notificationQuickEntryEnabled) {
+                        settingsViewModel.setNotificationQuickEntryEnabled(true)
+                    }
+                }
+                LaunchedEffect(settings.notificationQuickEntryEnabled) {
+                    val enabled = settings.notificationQuickEntryEnabled
+                    val wasEnabled = previousQuickEntryEnabled
+                    previousQuickEntryEnabled = enabled
+                    QuickSettingsEntryController.syncComponentEnabledState(
+                        context = this@MainActivity,
+                        enabled = enabled
+                    )
+                    if (enabled && !wasEnabled) {
+                        delay(220)
+                        QuickSettingsEntryController.requestAddTile(this@MainActivity)
+                    }
+                }
 
                 WeiyAccountTheme(
                     darkTheme = settings.darkModeEnabled,

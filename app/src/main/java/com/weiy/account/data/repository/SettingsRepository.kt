@@ -53,6 +53,11 @@ class SettingsRepository(
         _settings.value = dataSource.readSettings()
     }
 
+    fun setNotificationQuickEntryEnabled(enabled: Boolean) {
+        dataSource.setNotificationQuickEntryEnabled(enabled)
+        _settings.value = dataSource.readSettings()
+    }
+
     fun updateDailyReminder(hour: Int, minute: Int) {
         dataSource.updateDailyReminder(hour, minute)
         _settings.value = dataSource.readSettings()

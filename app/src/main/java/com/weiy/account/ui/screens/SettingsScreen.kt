@@ -427,14 +427,6 @@ fun SettingsScreen(
                     enabled = true,
                     onClick = {}
                 )
-                SettingsDivider()
-                SettingsNavigationRow(
-                    icon = ImageVector.vectorResource(R.drawable.ic_notification_panel),
-                    title = "通知栏快捷入口",
-                    subtitle = "",
-                    enabled = true,
-                    onClick = {}
-                )
             }
         }
     }

@@ -23,6 +23,10 @@ class SettingsPreferencesDataSource(context: Context) {
             ?.let { runCatching { StartDestination.valueOf(it) }.getOrNull() }
             ?: StartDestination.HOME
         val darkMode = preferences.getBoolean(KEY_DARK_MODE_ENABLED, false)
+        val notificationQuickEntryEnabled = preferences.getBoolean(
+            KEY_NOTIFICATION_QUICK_ENTRY_ENABLED,
+            false
+        )
         val reminderEnabled = preferences.getBoolean(KEY_REMINDER_ENABLED, false)
         val reminderHour = preferences.getInt(KEY_REMINDER_HOUR, DEFAULT_REMINDER_HOUR)
             .coerceIn(0, 23)
@@ -33,6 +37,7 @@ class SettingsPreferencesDataSource(context: Context) {
             defaultTransactionType = defaultType,
             defaultStartDestination = defaultStart,
             darkModeEnabled = darkMode,
+            notificationQuickEntryEnabled = notificationQuickEntryEnabled,
             reminderEnabled = reminderEnabled,
             reminderHour = reminderHour,
             reminderMinute = reminderMinute
@@ -53,6 +58,10 @@ class SettingsPreferencesDataSource(context: Context) {
 
     fun setDarkModeEnabled(value: Boolean) {
         preferences.edit { putBoolean(KEY_DARK_MODE_ENABLED, value) }
+    }
+
+    fun setNotificationQuickEntryEnabled(value: Boolean) {
+        preferences.edit { putBoolean(KEY_NOTIFICATION_QUICK_ENTRY_ENABLED, value) }
     }
 
     fun updateDailyReminder(hour: Int, minute: Int) {
@@ -106,6 +115,7 @@ class SettingsPreferencesDataSource(context: Context) {
         const val KEY_DEFAULT_TRANSACTION_TYPE = "defaultTransactionType"
         const val KEY_DEFAULT_START_DESTINATION = "defaultStartDestination"
         const val KEY_DARK_MODE_ENABLED = "darkModeEnabled"
+        const val KEY_NOTIFICATION_QUICK_ENTRY_ENABLED = "notificationQuickEntryEnabled"
         const val KEY_REMINDER_ENABLED = "reminderEnabled"
         const val KEY_REMINDER_HOUR = "reminderHour"
         const val KEY_REMINDER_MINUTE = "reminderMinute"

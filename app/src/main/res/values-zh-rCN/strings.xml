@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">唯忆记账</string>
+    <string name="quick_settings_tile_label">唯忆记账</string>
+    <string name="quick_settings_tile_subtitle">新增明细</string>
 </resources>
