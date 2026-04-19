@@ -22,6 +22,9 @@ sealed interface AppRoute : NavKey {
     data object Settings : AppRoute
 
     @Serializable
+    data object Search : AppRoute
+
+    @Serializable
     data class TransactionEdit(val transactionId: Long = 0L) : AppRoute
 
     @Serializable

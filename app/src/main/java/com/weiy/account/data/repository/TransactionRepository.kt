@@ -19,6 +19,7 @@ import com.weiy.account.utils.yearEndMillis
 import com.weiy.account.utils.yearStartMillis
 import java.time.YearMonth
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 class TransactionRepository(
@@ -36,6 +37,15 @@ class TransactionRepository(
             monthStart = monthStartMillis(month),
             monthEnd = monthEndMillis(month)
         ).map { list -> list.map { it.toModel() } }
+    }
+
+    fun observeTransactionsByKeyword(keyword: String): Flow<List<TransactionRecord>> {
+        val normalizedKeyword = keyword.trim()
+        if (normalizedKeyword.isBlank()) {
+            return flowOf(emptyList())
+        }
+        return transactionDao.observeTransactionsByKeyword(normalizedKeyword)
+            .map { list -> list.map { it.toModel() } }
     }
 
     fun observeMonthSummary(month: YearMonth): Flow<MonthSummary> {

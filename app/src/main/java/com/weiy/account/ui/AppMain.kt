@@ -58,6 +58,7 @@ import com.weiy.account.ui.screens.HomeScreen
 import com.weiy.account.ui.screens.OnboardingScreen
 import com.weiy.account.ui.screens.RecurringAccountingCreateScreen
 import com.weiy.account.ui.screens.RecurringAccountingListScreen
+import com.weiy.account.ui.screens.SearchScreen
 import com.weiy.account.ui.screens.SettingsScreen
 import com.weiy.account.ui.screens.StatsScreen
 import com.weiy.account.ui.screens.TransactionEditScreen
@@ -66,6 +67,7 @@ import com.weiy.account.viewmodel.CategoryManageViewModel
 import com.weiy.account.viewmodel.HomeViewModel
 import com.weiy.account.viewmodel.RecurringAccountingCreateViewModel
 import com.weiy.account.viewmodel.RecurringAccountingListViewModel
+import com.weiy.account.viewmodel.SearchViewModel
 import com.weiy.account.viewmodel.SettingsViewModel
 import com.weiy.account.viewmodel.StatsViewModel
 import com.weiy.account.viewmodel.TransactionEditViewModel
@@ -98,6 +100,7 @@ fun AppMain(
     val canGoBack = backStack.size > 1
     val showTopBar = currentRoute != AppRoute.Onboarding &&
         currentRoute != AppRoute.CategoryManage &&
+        currentRoute != AppRoute.Search &&
         currentRoute !is AppRoute.TransactionEdit
     val showBottomBar = currentRoute.toStartDestinationOrNull() != null
     val isHomeRoute = currentRoute == AppRoute.Home
@@ -171,7 +174,7 @@ fun AppMain(
                     },
                     actions = {
                         if (currentRoute == AppRoute.Home) {
-                            IconButton(onClick = {}) {
+                            IconButton(onClick = { backStack.add(AppRoute.Search) }) {
                                 Icon(Icons.Default.Search, contentDescription = "搜索")
                             }
                         }
@@ -268,16 +271,11 @@ fun AppMain(
                     initialContentExit = ExitTransition.None
                 )
             },
-            predictivePopTransitionSpec = { swipeEdge ->
-                if (isPredictiveBackDisabledRoute(initialState.key)) {
-                    ContentTransform(
-                        targetContentEnter = EnterTransition.None,
-                        initialContentExit = ExitTransition.None
-                    )
-                } else {
-                    androidx.navigation3.ui.defaultPredictivePopTransitionSpec<NavKey>()
-                        .invoke(this, swipeEdge)
-                }
+            predictivePopTransitionSpec = { _ ->
+                ContentTransform(
+                    targetContentEnter = EnterTransition.None,
+                    initialContentExit = ExitTransition.None
+                )
             },
             onBack = {
                 if (backStack.size > 1) {
@@ -346,6 +344,20 @@ fun AppMain(
                     )
                 }
 
+                entry<AppRoute.Search> {
+                    val vm: SearchViewModel = viewModel(
+                        factory = SearchViewModel.factory(
+                            transactionRepository = appContainer.transactionRepository,
+                            searchHistoryRepository = appContainer.searchHistoryRepository
+                        )
+                    )
+                    SearchScreen(
+                        viewModel = vm,
+                        onBack = { backStack.removeLastOrNull() },
+                        onOpenTransaction = { id -> backStack.add(AppRoute.TransactionEdit(id)) }
+                    )
+                }
+
                 entry<AppRoute.RecurringAccountingList> {
                     val vm: RecurringAccountingListViewModel = viewModel(
                         factory = RecurringAccountingListViewModel.factory(
@@ -409,6 +421,7 @@ private fun routeTitle(route: AppRoute): String {
         AppRoute.TransactionList -> "账单"
         AppRoute.Stats -> "报表"
         AppRoute.Settings -> "设置"
+        AppRoute.Search -> "搜索"
         AppRoute.CategoryManage -> "分类管理"
         AppRoute.RecurringAccountingList -> "定时记账"
         AppRoute.RecurringAccountingCreate -> "添加定时记账"
@@ -416,8 +429,3 @@ private fun routeTitle(route: AppRoute): String {
     }
 }
 
-private fun isPredictiveBackDisabledRoute(route: Any?): Boolean {
-    val routeKey = route?.toString() ?: return false
-    return routeKey == AppRoute.CategoryManage.toString() ||
-        routeKey.startsWith(AppRoute.TransactionEdit().toString().substringBefore('('))
-}

@@ -80,6 +80,18 @@ interface TransactionDao {
 
     @Query(
         """
+        SELECT t.*, c.name AS category_name, c.type AS category_type
+        FROM transactions t
+        INNER JOIN categories c ON t.categoryId = c.id
+        WHERE c.name LIKE '%' || :keyword || '%'
+            OR t.note LIKE '%' || :keyword || '%'
+        ORDER BY t.dateTime DESC
+        """
+    )
+    fun observeTransactionsByKeyword(keyword: String): Flow<List<TransactionWithCategory>>
+
+    @Query(
+        """
         SELECT
             COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount ELSE 0 END), 0) AS income_total,
             COALESCE(SUM(CASE WHEN type = 'EXPENSE' THEN amount ELSE 0 END), 0) AS expense_total
