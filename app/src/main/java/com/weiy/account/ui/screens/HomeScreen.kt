@@ -1,23 +1,33 @@
 package com.weiy.account.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -28,9 +38,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,8 +60,13 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.weiy.account.ui.components.TransactionListItem
+import com.weiy.account.utils.currentYearMonth
 import com.weiy.account.utils.formatAmount
 import com.weiy.account.viewmodel.HomeViewModel
+import java.time.YearMonth
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,6 +81,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val density = LocalDensity.current
+    var showMonthPicker by remember { mutableStateOf(false) }
 
     val pullTriggerPx = with(density) { 96.dp.toPx() }
     val pullMaxPx = with(density) { 150.dp.toPx() }
@@ -190,10 +209,21 @@ fun HomeScreen(
                                 .padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Text(
-                                text = "${uiState.monthLabel} 概览",
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = uiState.monthLabel,
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                                )
+                                Icon(
+                                    modifier = Modifier.clickable { showMonthPicker = true },
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = "选择时间",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
@@ -284,7 +314,198 @@ fun HomeScreen(
             }
         }
     }
+
+    if (showMonthPicker) {
+        HomeMonthPickerBottomSheet(
+            currentMonth = uiState.currentMonth,
+            onDismiss = { showMonthPicker = false },
+            onConfirm = { year, month ->
+                viewModel.selectMonth(year, month)
+                showMonthPicker = false
+            }
+        )
+    }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeMonthPickerBottomSheet(
+    currentMonth: YearMonth,
+    onDismiss: () -> Unit,
+    onConfirm: (Int, Int) -> Unit
+) {
+    val latestMonth = currentYearMonth()
+    val latestYear = latestMonth.year
+    val latestMonthValue = latestMonth.monthValue
+
+    var pendingYear by remember(currentMonth, latestYear) {
+        mutableIntStateOf(currentMonth.year.coerceIn(MIN_SELECTABLE_YEAR, latestYear))
+    }
+    var pendingMonth by remember(currentMonth) {
+        mutableIntStateOf(currentMonth.monthValue)
+    }
+
+    val yearOptions = remember(latestYear) {
+        (MIN_SELECTABLE_YEAR..latestYear).toList()
+    }
+    val maxMonthForPendingYear = if (pendingYear == latestYear) latestMonthValue else 12
+    val monthOptions = remember(maxMonthForPendingYear) {
+        (1..maxMonthForPendingYear).toList()
+    }
+
+    LaunchedEffect(maxMonthForPendingYear) {
+        pendingMonth = pendingMonth.coerceIn(1, maxMonthForPendingYear)
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text("取消")
+                }
+                Text(
+                    text = "选择月份",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center
+                )
+                TextButton(onClick = { onConfirm(pendingYear, pendingMonth) }) {
+                    Text("确定")
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                    .padding(vertical = 20.dp, horizontal = 20.dp)
+                    .heightIn(min = PICKER_VIEWPORT_HEIGHT, max = PICKER_VIEWPORT_HEIGHT + 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                WheelPickerColumn(
+                    options = yearOptions,
+                    selectedValue = pendingYear,
+                    onValueSelected = { pendingYear = it },
+                    modifier = Modifier.weight(1f)
+                )
+                WheelPickerColumn(
+                    options = monthOptions,
+                    selectedValue = pendingMonth,
+                    onValueSelected = { pendingMonth = it },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WheelPickerColumn(
+    options: List<Int>,
+    selectedValue: Int,
+    onValueSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (options.isEmpty()) return
+
+    val scope = rememberCoroutineScope()
+    val itemHeightPx = with(LocalDensity.current) { PICKER_ITEM_HEIGHT.roundToPx() }
+    val selectedIndex = options.indexOf(selectedValue).coerceAtLeast(0)
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
+    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+
+    LaunchedEffect(options, selectedValue) {
+        if (listState.isScrollInProgress) return@LaunchedEffect
+        val targetIndex = options.indexOf(selectedValue).coerceAtLeast(0)
+        if (listState.firstVisibleItemIndex != targetIndex || listState.firstVisibleItemScrollOffset != 0) {
+            listState.scrollToItem(targetIndex)
+        }
+    }
+
+    LaunchedEffect(listState, options, itemHeightPx) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .map { (index, offset) ->
+                (index + if (offset >= itemHeightPx / 2) 1 else 0).coerceIn(0, options.lastIndex)
+            }
+            .distinctUntilChanged()
+            .collect { index ->
+                onValueSelected(options[index])
+            }
+    }
+
+    Box(
+        modifier = modifier.height(PICKER_VIEWPORT_HEIGHT)
+    ) {
+        LazyColumn(
+            state = listState,
+            flingBehavior = flingBehavior,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = PICKER_ITEM_HEIGHT)
+        ) {
+            itemsIndexed(options, key = { _, value -> value }) { index, value ->
+                val isSelected = value == selectedValue
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(PICKER_ITEM_HEIGHT)
+                        .clickable {
+                            scope.launch {
+                                listState.animateScrollToItem(index)
+                            }
+                        }
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = value.toString(),
+                        textAlign = TextAlign.Center,
+                        style = if (isSelected) {
+                            MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Medium)
+                        } else {
+                            MaterialTheme.typography.headlineMedium
+                        },
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.42f)
+                        }
+                    )
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            HorizontalDivider(
+                modifier = Modifier.width(100.dp),
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.28f)
+            )
+            Spacer(modifier = Modifier.height(PICKER_ITEM_HEIGHT))
+            HorizontalDivider(
+                modifier = Modifier.width(100.dp),
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.28f)
+            )
+        }
+    }
+}
+
+private const val MIN_SELECTABLE_YEAR = 2002
+private val PICKER_ITEM_HEIGHT = 64.dp
+private val PICKER_VIEWPORT_HEIGHT = 192.dp
 
 @Composable
 private fun MetricItem(

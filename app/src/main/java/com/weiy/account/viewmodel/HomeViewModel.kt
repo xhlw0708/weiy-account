@@ -104,7 +104,16 @@ class HomeViewModel(
         }
     }
 
+    fun selectMonth(year: Int, month: Int) {
+        val safeYear = year.coerceIn(MIN_SELECTABLE_YEAR, latestMonth.year)
+        val maxMonth = if (safeYear == latestMonth.year) latestMonth.monthValue else 12
+        val safeMonth = month.coerceIn(1, maxMonth)
+        selectedMonth.value = YearMonth.of(safeYear, safeMonth)
+    }
+
     companion object {
+        private const val MIN_SELECTABLE_YEAR = 2002
+
         fun factory(transactionRepository: TransactionRepository) = viewModelFactory {
             initializer {
                 HomeViewModel(transactionRepository)
