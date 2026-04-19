@@ -56,12 +56,16 @@ import com.weiy.account.navigation.toStartDestinationOrNull
 import com.weiy.account.ui.screens.CategoryManageScreen
 import com.weiy.account.ui.screens.HomeScreen
 import com.weiy.account.ui.screens.OnboardingScreen
+import com.weiy.account.ui.screens.RecurringAccountingCreateScreen
+import com.weiy.account.ui.screens.RecurringAccountingListScreen
 import com.weiy.account.ui.screens.SettingsScreen
 import com.weiy.account.ui.screens.StatsScreen
 import com.weiy.account.ui.screens.TransactionEditScreen
 import com.weiy.account.ui.screens.TransactionListScreen
 import com.weiy.account.viewmodel.CategoryManageViewModel
 import com.weiy.account.viewmodel.HomeViewModel
+import com.weiy.account.viewmodel.RecurringAccountingCreateViewModel
+import com.weiy.account.viewmodel.RecurringAccountingListViewModel
 import com.weiy.account.viewmodel.SettingsViewModel
 import com.weiy.account.viewmodel.StatsViewModel
 import com.weiy.account.viewmodel.TransactionEditViewModel
@@ -337,7 +341,33 @@ fun AppMain(
                 entry<AppRoute.Settings> {
                     SettingsScreen(
                         viewModel = settingsViewModel,
-                        onOpenCategoryManage = { backStack.add(AppRoute.CategoryManage) }
+                        onOpenCategoryManage = { backStack.add(AppRoute.CategoryManage) },
+                        onOpenRecurringAccounting = { backStack.add(AppRoute.RecurringAccountingList) }
+                    )
+                }
+
+                entry<AppRoute.RecurringAccountingList> {
+                    val vm: RecurringAccountingListViewModel = viewModel(
+                        factory = RecurringAccountingListViewModel.factory(
+                            repository = appContainer.recurringAccountingRepository
+                        )
+                    )
+                    RecurringAccountingListScreen(
+                        viewModel = vm,
+                        onAdd = { backStack.add(AppRoute.RecurringAccountingCreate) }
+                    )
+                }
+
+                entry<AppRoute.RecurringAccountingCreate> {
+                    val vm: RecurringAccountingCreateViewModel = viewModel(
+                        factory = RecurringAccountingCreateViewModel.factory(
+                            recurringRepository = appContainer.recurringAccountingRepository,
+                            categoryRepository = appContainer.categoryRepository
+                        )
+                    )
+                    RecurringAccountingCreateScreen(
+                        viewModel = vm,
+                        onFinished = { backStack.removeLastOrNull() }
                     )
                 }
 
@@ -380,6 +410,8 @@ private fun routeTitle(route: AppRoute): String {
         AppRoute.Stats -> "报表"
         AppRoute.Settings -> "设置"
         AppRoute.CategoryManage -> "分类管理"
+        AppRoute.RecurringAccountingList -> "定时记账"
+        AppRoute.RecurringAccountingCreate -> "添加定时记账"
         is AppRoute.TransactionEdit -> if (route.transactionId > 0L) "编辑明细" else "新增明细"
     }
 }

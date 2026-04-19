@@ -52,7 +52,9 @@ class MainActivity : ComponentActivity() {
                 if (appContainer != null || startupError != null) return@LaunchedEffect
                 runCatching {
                     withContext(Dispatchers.IO) {
-                        AppContainer(applicationContext)
+                        val container = AppContainer(applicationContext)
+                        container.recurringAccountingRepository.runStartupBackfill()
+                        container
                     }
                 }.onSuccess {
                     appContainer = it

@@ -80,7 +80,9 @@ class SettingsViewModel(
                         append("复用分类 ${summary.matchedCategoryCount} 个，")
                         append("新增流水 ${summary.insertedTransactionCount} 条，")
                         append("新增备注历史 ${summary.insertedNoteHistoryCount} 条，")
-                        append("合并备注历史 ${summary.mergedNoteHistoryCount} 条。")
+                        append("合并备注历史 ${summary.mergedNoteHistoryCount} 条，")
+                        append("新增定时规则 ${summary.insertedRecurringRuleCount} 条，")
+                        append("新增执行记录 ${summary.insertedRecurringExecutionCount} 条。")
                     },
                     isError = false
                 )
@@ -110,7 +112,7 @@ class SettingsViewModel(
             }.onSuccess { summary ->
                 _dataTransferState.value = DataTransferUiState(
                     inProgress = false,
-                    message = "导出完成：分类 ${summary.categoryCount} 个，流水 ${summary.transactionCount} 条，备注历史 ${summary.noteHistoryCount} 条。",
+                    message = "导出完成：分类 ${summary.categoryCount} 个，流水 ${summary.transactionCount} 条，备注历史 ${summary.noteHistoryCount} 条，定时规则 ${summary.recurringRuleCount} 条，执行记录 ${summary.recurringExecutionCount} 条。",
                     isError = false
                 )
             }.onFailure { error ->

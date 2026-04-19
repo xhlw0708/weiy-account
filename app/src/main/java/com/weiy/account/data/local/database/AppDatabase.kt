@@ -9,14 +9,24 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.weiy.account.data.local.dao.CategoryDao
 import com.weiy.account.data.local.dao.CategoryNoteHistoryDao
+import com.weiy.account.data.local.dao.RecurringAccountingExecutionDao
+import com.weiy.account.data.local.dao.RecurringAccountingRuleDao
 import com.weiy.account.data.local.dao.TransactionDao
 import com.weiy.account.data.local.entity.CategoryEntity
 import com.weiy.account.data.local.entity.CategoryNoteHistoryEntity
+import com.weiy.account.data.local.entity.RecurringAccountingExecutionEntity
+import com.weiy.account.data.local.entity.RecurringAccountingRuleEntity
 import com.weiy.account.data.local.entity.TransactionEntity
 
 @Database(
-    entities = [TransactionEntity::class, CategoryEntity::class, CategoryNoteHistoryEntity::class],
-    version = 2,
+    entities = [
+        TransactionEntity::class,
+        CategoryEntity::class,
+        CategoryNoteHistoryEntity::class,
+        RecurringAccountingRuleEntity::class,
+        RecurringAccountingExecutionEntity::class
+    ],
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -27,6 +37,10 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
 
     abstract fun categoryNoteHistoryDao(): CategoryNoteHistoryDao
+
+    abstract fun recurringAccountingRuleDao(): RecurringAccountingRuleDao
+
+    abstract fun recurringAccountingExecutionDao(): RecurringAccountingExecutionDao
 
     companion object {
         private const val DATABASE_NAME = "weiy_account.db"
@@ -76,6 +90,76 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `recurring_accounting_rules` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `type` TEXT NOT NULL,
+                        `amount` REAL NOT NULL,
+                        `categoryId` INTEGER NOT NULL,
+                        `note` TEXT NOT NULL,
+                        `tagsSerialized` TEXT NOT NULL,
+                        `firstOccurrenceDateEpochDay` INTEGER NOT NULL,
+                        `repeatUnit` TEXT NOT NULL,
+                        `repeatInterval` INTEGER NOT NULL,
+                        `enabled` INTEGER NOT NULL,
+                        `lastExecutedDateEpochDay` INTEGER,
+                        `nextDueDateEpochDay` INTEGER,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        FOREIGN KEY(`categoryId`) REFERENCES `categories`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_recurring_accounting_rules_categoryId`
+                    ON `recurring_accounting_rules` (`categoryId`)
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_recurring_accounting_rules_enabled`
+                    ON `recurring_accounting_rules` (`enabled`)
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_recurring_accounting_rules_nextDueDateEpochDay`
+                    ON `recurring_accounting_rules` (`nextDueDateEpochDay`)
+                    """.trimIndent()
+                )
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `recurring_accounting_executions` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `ruleId` INTEGER NOT NULL,
+                        `occurrenceDateEpochDay` INTEGER NOT NULL,
+                        `generatedTransactionId` INTEGER,
+                        `executedAt` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        FOREIGN KEY(`ruleId`) REFERENCES `recurring_accounting_rules`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_recurring_accounting_executions_ruleId`
+                    ON `recurring_accounting_executions` (`ruleId`)
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_recurring_accounting_executions_ruleId_occurrenceDateEpochDay`
+                    ON `recurring_accounting_executions` (`ruleId`, `occurrenceDateEpochDay`)
+                    """.trimIndent()
+                )
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -85,7 +169,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     DATABASE_NAME
-                ).addMigrations(MIGRATION_1_2)
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                     .also { instance = it }
             }

@@ -39,6 +39,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -47,7 +48,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -78,6 +78,7 @@ private enum class SettingsOptionDialog {
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onOpenCategoryManage: () -> Unit,
+    onOpenRecurringAccounting: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val settings by viewModel.uiState.collectAsState()
@@ -91,6 +92,14 @@ fun SettingsScreen(
     var reminderHour by remember { mutableIntStateOf(settings.reminderHour) }
     var reminderMinute by remember { mutableIntStateOf(settings.reminderMinute) }
     var pendingReminderSave by remember { mutableStateOf(false) }
+    var clearCacheDialogVisible by remember { mutableStateOf(false) }
+    var cacheSizeLabel by remember { mutableStateOf(formatBytesSize(calculateAppCacheSizeBytes(context))) }
+
+    LaunchedEffect(clearCacheDialogVisible) {
+        if (!clearCacheDialogVisible) {
+            cacheSizeLabel = formatBytesSize(calculateAppCacheSizeBytes(context))
+        }
+    }
 
     val importExcelLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -228,6 +237,37 @@ fun SettingsScreen(
         )
     }
 
+    if (clearCacheDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { clearCacheDialogVisible = false },
+            title = { Text("清除缓存") },
+            text = {
+                Text(
+                    text = "缓存是使用记账过程中产生的临时数据，清理缓存不会影响唯忆记账的正常使用。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        clearCacheDialogVisible = false
+                        if (clearAppCache(context)) {
+                            cacheSizeLabel = formatBytesSize(calculateAppCacheSizeBytes(context))
+                        }
+                    }
+                ) {
+                    Text("清除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { clearCacheDialogVisible = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
     pendingAction?.let { action ->
         DataTransferFormatDialog(
             title = action.title,
@@ -270,7 +310,7 @@ fun SettingsScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F7)),
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest),
         contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -333,6 +373,16 @@ fun SettingsScreen(
                         reminderMinute = settings.reminderMinute
                         reminderDialogVisible = true
                     }
+                )
+            }
+            SettingsDivider()
+            SettingsGroupCard {
+                SettingsNavigationRow(
+                    icon = ImageVector.vectorResource(R.drawable.ic_timer),
+                    title = "定时记账",
+                    subtitle = "定时自动记账",
+                    enabled = true,
+                    onClick = onOpenRecurringAccounting
                 )
             }
         }
@@ -405,7 +455,7 @@ fun SettingsScreen(
 
         item {
             SettingsSectionTitle(
-                title = "快捷使用",
+                title = "系统设置",
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
@@ -413,19 +463,11 @@ fun SettingsScreen(
         item {
             SettingsGroupCard {
                 SettingsNavigationRow(
-                    icon = ImageVector.vectorResource(R.drawable.ic_timer),
-                    title = "定时记账",
-                    subtitle = "定时自动记账",
+                    icon = ImageVector.vectorResource(R.drawable.ic_clean_cache),
+                    title = "清除缓存",
+                    subtitle = cacheSizeLabel,
                     enabled = true,
-                    onClick = {}
-                )
-                SettingsDivider()
-                SettingsNavigationRow(
-                    icon = ImageVector.vectorResource(R.drawable.ic_widget),
-                    title = "桌面小部件",
-                    subtitle = "",
-                    enabled = true,
-                    onClick = {}
+                    onClick = { clearCacheDialogVisible = true }
                 )
             }
         }
@@ -525,7 +567,7 @@ private fun SettingsSectionTitle(
         text = title,
         modifier = modifier,
         style = MaterialTheme.typography.labelLarge,
-        color = Color(0xFF7B7B80)
+        color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 }
 
@@ -638,7 +680,7 @@ private fun SettingsIcon(icon: ImageVector) {
         modifier = Modifier
             .size(30.dp)
             .background(
-                color = Color(0xFFF1F1F4),
+                color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = MaterialTheme.shapes.small
             ),
         contentAlignment = Alignment.Center
@@ -646,7 +688,7 @@ private fun SettingsIcon(icon: ImageVector) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color(0xFF4E4E52)
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -655,7 +697,7 @@ private fun SettingsIcon(icon: ImageVector) {
 private fun SettingsDivider() {
     HorizontalDivider(
         modifier = Modifier.padding(start = 58.dp),
-        color = Color(0xFFEAEAF0)
+        color = MaterialTheme.colorScheme.outlineVariant
     )
 }
 
@@ -668,7 +710,7 @@ private fun DataTransferStatusPanel(
     val accentColor = if (state.isError) {
         MaterialTheme.colorScheme.error
     } else {
-        Color(0xFFE2B400)
+        MaterialTheme.colorScheme.primary
     }
 
     Card(modifier = modifier.fillMaxWidth()) {
@@ -853,6 +895,49 @@ private fun disableDailyReminder(
     viewModel.disableDailyReminder()
     reminderScheduler.cancelReminder()
     Toast.makeText(context, "已关闭记账提醒", Toast.LENGTH_SHORT).show()
+}
+
+private fun clearAppCache(context: Context): Boolean {
+    return runCatching {
+        context.cacheDir.deleteRecursively()
+        context.cacheDir.mkdirs()
+        context.externalCacheDir?.let {
+            it.deleteRecursively()
+            it.mkdirs()
+        }
+    }.onSuccess {
+        Toast.makeText(context, "缓存已清理", Toast.LENGTH_SHORT).show()
+    }.onFailure {
+        Toast.makeText(context, "清理失败，请稍后重试", Toast.LENGTH_SHORT).show()
+    }.isSuccess
+}
+
+private fun calculateAppCacheSizeBytes(context: Context): Long {
+    val internal = context.cacheDir.directorySizeBytes()
+    val external = context.externalCacheDir?.directorySizeBytes() ?: 0L
+    return internal + external
+}
+
+private fun java.io.File.directorySizeBytes(): Long {
+    if (!exists()) return 0L
+    if (isFile) return length()
+    return listFiles()?.sumOf { it.directorySizeBytes() } ?: 0L
+}
+
+private fun formatBytesSize(bytes: Long): String {
+    val units = listOf("B", "KB", "MB", "GB", "TB")
+    var value = bytes.toDouble()
+    var index = 0
+    while (value >= 1024 && index < units.lastIndex) {
+        value /= 1024
+        index += 1
+    }
+    val display = if (index == 0) {
+        value.toLong().toString()
+    } else {
+        String.format("%.2f", value)
+    }
+    return "缓存大小：$display ${units[index]}"
 }
 
 private fun hasNotificationPermission(context: Context): Boolean {

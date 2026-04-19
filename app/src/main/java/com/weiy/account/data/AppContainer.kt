@@ -5,6 +5,7 @@ import com.weiy.account.BuildConfig
 import com.weiy.account.data.local.database.AppDatabase
 import com.weiy.account.data.repository.CategoryRepository
 import com.weiy.account.data.repository.DataTransferRepository
+import com.weiy.account.data.repository.RecurringAccountingRepository
 import com.weiy.account.data.repository.SettingsRepository
 import com.weiy.account.data.repository.TransactionRepository
 import com.weiy.account.model.TransactionType
@@ -28,6 +29,10 @@ class AppContainer(context: Context) {
     val categoryRepository: CategoryRepository = CategoryRepository(database.categoryDao())
     val settingsRepository: SettingsRepository = SettingsRepository(settingsDataSource)
     val dataTransferRepository: DataTransferRepository = DataTransferRepository(context, database)
+    val recurringAccountingRepository: RecurringAccountingRepository = RecurringAccountingRepository(
+        database = database,
+        transactionRepository = transactionRepository
+    )
 
     init {
         appScope.launch {

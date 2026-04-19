@@ -26,6 +26,12 @@ sealed interface AppRoute : NavKey {
 
     @Serializable
     data object CategoryManage : AppRoute
+
+    @Serializable
+    data object RecurringAccountingList : AppRoute
+
+    @Serializable
+    data object RecurringAccountingCreate : AppRoute
 }
 
 fun StartDestination.toAppRoute(): AppRoute {

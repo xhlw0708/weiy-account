@@ -6,8 +6,11 @@ import androidx.room.withTransaction
 import com.weiy.account.data.local.database.AppDatabase
 import com.weiy.account.data.local.entity.CategoryEntity
 import com.weiy.account.data.local.entity.CategoryNoteHistoryEntity
+import com.weiy.account.data.local.entity.RecurringAccountingExecutionEntity
+import com.weiy.account.data.local.entity.RecurringAccountingRuleEntity
 import com.weiy.account.data.local.entity.TransactionEntity
 import com.weiy.account.model.DataTransferFormat
+import com.weiy.account.model.RecurrenceUnit
 import com.weiy.account.model.TransactionType
 import java.io.BufferedWriter
 import java.io.InputStream
@@ -32,6 +35,8 @@ class DataTransferRepository(
     private val categoryDao = database.categoryDao()
     private val transactionDao = database.transactionDao()
     private val categoryNoteHistoryDao = database.categoryNoteHistoryDao()
+    private val recurringRuleDao = database.recurringAccountingRuleDao()
+    private val recurringExecutionDao = database.recurringAccountingExecutionDao()
 
     suspend fun exportData(
         uri: Uri,
@@ -41,7 +46,9 @@ class DataTransferRepository(
             DatabaseSnapshot(
                 categories = categoryDao.getAllCategories(),
                 transactions = transactionDao.getAllTransactions(),
-                noteHistories = categoryNoteHistoryDao.getAllHistories()
+                noteHistories = categoryNoteHistoryDao.getAllHistories(),
+                recurringRules = recurringRuleDao.getAllRules(),
+                recurringExecutions = recurringExecutionDao.getAllExecutions()
             )
         }
 
@@ -55,7 +62,9 @@ class DataTransferRepository(
         DataExportSummary(
             categoryCount = snapshot.categories.size,
             transactionCount = snapshot.transactions.size,
-            noteHistoryCount = snapshot.noteHistories.size
+            noteHistoryCount = snapshot.noteHistories.size,
+            recurringRuleCount = snapshot.recurringRules.size,
+            recurringExecutionCount = snapshot.recurringExecutions.size
         )
     }
 
@@ -82,6 +91,8 @@ class DataTransferRepository(
         var insertedTransactions = 0
         var insertedNoteHistories = 0
         var mergedNoteHistories = 0
+        var insertedRecurringRules = 0
+        var insertedRecurringExecutions = 0
 
         snapshot.categories.forEach { category ->
             val normalizedName = category.name.trim()
@@ -152,12 +163,42 @@ class DataTransferRepository(
             }
         }
 
+        val recurringRuleIdMapping = mutableMapOf<Long, Long>()
+        snapshot.recurringRules.forEach { rule ->
+            val actualCategoryId = categoryIdMapping[rule.categoryId]
+                ?: error("导入失败：存在找不到分类映射的定时记账规则")
+            val insertedId = recurringRuleDao.insertRule(
+                rule.copy(
+                    id = 0L,
+                    categoryId = actualCategoryId,
+                    repeatInterval = rule.repeatInterval.coerceAtLeast(1)
+                )
+            )
+            recurringRuleIdMapping[rule.id] = insertedId
+            insertedRecurringRules += 1
+        }
+
+        snapshot.recurringExecutions.forEach { execution ->
+            val actualRuleId = recurringRuleIdMapping[execution.ruleId] ?: return@forEach
+            val insertedId = recurringExecutionDao.insertExecution(
+                execution.copy(
+                    id = 0L,
+                    ruleId = actualRuleId
+                )
+            )
+            if (insertedId > 0L) {
+                insertedRecurringExecutions += 1
+            }
+        }
+
         return DataImportSummary(
             insertedCategoryCount = insertedCategories,
             matchedCategoryCount = matchedCategories,
             insertedTransactionCount = insertedTransactions,
             insertedNoteHistoryCount = insertedNoteHistories,
-            mergedNoteHistoryCount = mergedNoteHistories
+            mergedNoteHistoryCount = mergedNoteHistories,
+            insertedRecurringRuleCount = insertedRecurringRules,
+            insertedRecurringExecutionCount = insertedRecurringExecutions
         )
     }
 }
@@ -165,7 +206,9 @@ class DataTransferRepository(
 data class DataExportSummary(
     val categoryCount: Int,
     val transactionCount: Int,
-    val noteHistoryCount: Int
+    val noteHistoryCount: Int,
+    val recurringRuleCount: Int,
+    val recurringExecutionCount: Int
 )
 
 data class DataImportSummary(
@@ -173,19 +216,25 @@ data class DataImportSummary(
     val matchedCategoryCount: Int,
     val insertedTransactionCount: Int,
     val insertedNoteHistoryCount: Int,
-    val mergedNoteHistoryCount: Int
+    val mergedNoteHistoryCount: Int,
+    val insertedRecurringRuleCount: Int,
+    val insertedRecurringExecutionCount: Int
 )
 
 private data class DatabaseSnapshot(
     val categories: List<CategoryEntity>,
     val transactions: List<TransactionEntity>,
-    val noteHistories: List<CategoryNoteHistoryEntity>
+    val noteHistories: List<CategoryNoteHistoryEntity>,
+    val recurringRules: List<RecurringAccountingRuleEntity>,
+    val recurringExecutions: List<RecurringAccountingExecutionEntity>
 )
 
 private object ExcelTransferCodec {
     private const val CATEGORY_SHEET = "categories"
     private const val TRANSACTION_SHEET = "transactions"
     private const val NOTE_HISTORY_SHEET = "category_note_history"
+    private const val RECURRING_RULE_SHEET = "recurring_accounting_rules"
+    private const val RECURRING_EXECUTION_SHEET = "recurring_accounting_executions"
 
     fun write(
         snapshot: DatabaseSnapshot,
@@ -243,6 +292,46 @@ private object ExcelTransferCodec {
                 }
             }
 
+            workbook.createSheet(RECURRING_RULE_SHEET).apply {
+                writeHeader(RECURRING_RULE_HEADERS)
+                snapshot.recurringRules.forEachIndexed { index, rule ->
+                    createRow(index + 1).writeCells(
+                        listOf(
+                            rule.id.toString(),
+                            rule.type.name,
+                            rule.amount.toString(),
+                            rule.categoryId.toString(),
+                            rule.note,
+                            rule.tagsSerialized,
+                            rule.firstOccurrenceDateEpochDay.toString(),
+                            rule.repeatUnit.name,
+                            rule.repeatInterval.toString(),
+                            rule.enabled.toString(),
+                            rule.lastExecutedDateEpochDay?.toString().orEmpty(),
+                            rule.nextDueDateEpochDay?.toString().orEmpty(),
+                            rule.createdAt.toString(),
+                            rule.updatedAt.toString()
+                        )
+                    )
+                }
+            }
+
+            workbook.createSheet(RECURRING_EXECUTION_SHEET).apply {
+                writeHeader(RECURRING_EXECUTION_HEADERS)
+                snapshot.recurringExecutions.forEachIndexed { index, execution ->
+                    createRow(index + 1).writeCells(
+                        listOf(
+                            execution.id.toString(),
+                            execution.ruleId.toString(),
+                            execution.occurrenceDateEpochDay.toString(),
+                            execution.generatedTransactionId?.toString().orEmpty(),
+                            execution.executedAt.toString(),
+                            execution.createdAt.toString()
+                        )
+                    )
+                }
+            }
+
             CATEGORY_HEADERS.indices.forEach { columnIndex ->
                 workbook.getSheet(CATEGORY_SHEET).autoSizeColumn(columnIndex)
             }
@@ -251,6 +340,12 @@ private object ExcelTransferCodec {
             }
             NOTE_HISTORY_HEADERS.indices.forEach { columnIndex ->
                 workbook.getSheet(NOTE_HISTORY_SHEET).autoSizeColumn(columnIndex)
+            }
+            RECURRING_RULE_HEADERS.indices.forEach { columnIndex ->
+                workbook.getSheet(RECURRING_RULE_SHEET).autoSizeColumn(columnIndex)
+            }
+            RECURRING_EXECUTION_HEADERS.indices.forEach { columnIndex ->
+                workbook.getSheet(RECURRING_EXECUTION_SHEET).autoSizeColumn(columnIndex)
             }
 
             workbook.write(outputStream)
@@ -269,11 +364,19 @@ private object ExcelTransferCodec {
             val noteHistories = workbook.getSheet(NOTE_HISTORY_SHEET)?.readRows(formatter, NOTE_HISTORY_HEADERS)
                 ?.map(::parseNoteHistoryRow)
                 ?: error("导入文件缺少 $NOTE_HISTORY_SHEET 工作表")
+            val recurringRules = workbook.getSheet(RECURRING_RULE_SHEET)?.readRows(formatter, RECURRING_RULE_HEADERS)
+                ?.map(::parseRecurringRuleRow)
+                ?: emptyList()
+            val recurringExecutions = workbook.getSheet(RECURRING_EXECUTION_SHEET)?.readRows(formatter, RECURRING_EXECUTION_HEADERS)
+                ?.map(::parseRecurringExecutionRow)
+                ?: emptyList()
 
             return DatabaseSnapshot(
                 categories = categories,
                 transactions = transactions,
-                noteHistories = noteHistories
+                noteHistories = noteHistories,
+                recurringRules = recurringRules,
+                recurringExecutions = recurringExecutions
             )
         }
     }
@@ -283,6 +386,8 @@ private object CsvArchiveTransferCodec {
     private const val CATEGORY_ENTRY = "categories.csv"
     private const val TRANSACTION_ENTRY = "transactions.csv"
     private const val NOTE_HISTORY_ENTRY = "category_note_history.csv"
+    private const val RECURRING_RULE_ENTRY = "recurring_accounting_rules.csv"
+    private const val RECURRING_EXECUTION_ENTRY = "recurring_accounting_executions.csv"
 
     fun write(
         snapshot: DatabaseSnapshot,
@@ -336,6 +441,44 @@ private object CsvArchiveTransferCodec {
                     )
                 }
             }
+
+            zipOutputStream.writeCsvEntry(RECURRING_RULE_ENTRY, RECURRING_RULE_HEADERS) { writer ->
+                snapshot.recurringRules.forEach { rule ->
+                    writer.writeCsvRow(
+                        listOf(
+                            rule.id.toString(),
+                            rule.type.name,
+                            rule.amount.toString(),
+                            rule.categoryId.toString(),
+                            rule.note,
+                            rule.tagsSerialized,
+                            rule.firstOccurrenceDateEpochDay.toString(),
+                            rule.repeatUnit.name,
+                            rule.repeatInterval.toString(),
+                            rule.enabled.toString(),
+                            rule.lastExecutedDateEpochDay?.toString().orEmpty(),
+                            rule.nextDueDateEpochDay?.toString().orEmpty(),
+                            rule.createdAt.toString(),
+                            rule.updatedAt.toString()
+                        )
+                    )
+                }
+            }
+
+            zipOutputStream.writeCsvEntry(RECURRING_EXECUTION_ENTRY, RECURRING_EXECUTION_HEADERS) { writer ->
+                snapshot.recurringExecutions.forEach { execution ->
+                    writer.writeCsvRow(
+                        listOf(
+                            execution.id.toString(),
+                            execution.ruleId.toString(),
+                            execution.occurrenceDateEpochDay.toString(),
+                            execution.generatedTransactionId?.toString().orEmpty(),
+                            execution.executedAt.toString(),
+                            execution.createdAt.toString()
+                        )
+                    )
+                }
+            }
         }
     }
 
@@ -354,11 +497,21 @@ private object CsvArchiveTransferCodec {
         val categoriesText = csvEntries[CATEGORY_ENTRY] ?: error("导入压缩包缺少 $CATEGORY_ENTRY")
         val transactionsText = csvEntries[TRANSACTION_ENTRY] ?: error("导入压缩包缺少 $TRANSACTION_ENTRY")
         val noteHistoriesText = csvEntries[NOTE_HISTORY_ENTRY] ?: error("导入压缩包缺少 $NOTE_HISTORY_ENTRY")
+        val recurringRulesText = csvEntries[RECURRING_RULE_ENTRY]
+        val recurringExecutionsText = csvEntries[RECURRING_EXECUTION_ENTRY]
 
         return DatabaseSnapshot(
             categories = categoriesText.readCsvRows(CATEGORY_HEADERS).map(::parseCategoryRow),
             transactions = transactionsText.readCsvRows(TRANSACTION_HEADERS).map(::parseTransactionRow),
-            noteHistories = noteHistoriesText.readCsvRows(NOTE_HISTORY_HEADERS).map(::parseNoteHistoryRow)
+            noteHistories = noteHistoriesText.readCsvRows(NOTE_HISTORY_HEADERS).map(::parseNoteHistoryRow),
+            recurringRules = recurringRulesText
+                ?.readCsvRows(RECURRING_RULE_HEADERS)
+                ?.map(::parseRecurringRuleRow)
+                ?: emptyList(),
+            recurringExecutions = recurringExecutionsText
+                ?.readCsvRows(RECURRING_EXECUTION_HEADERS)
+                ?.map(::parseRecurringExecutionRow)
+                ?: emptyList()
         )
     }
 }
@@ -382,6 +535,30 @@ private val NOTE_HISTORY_HEADERS = listOf(
     "lastUsedAt",
     "createdAt",
     "updatedAt"
+)
+private val RECURRING_RULE_HEADERS = listOf(
+    "id",
+    "type",
+    "amount",
+    "categoryId",
+    "note",
+    "tagsSerialized",
+    "firstOccurrenceDateEpochDay",
+    "repeatUnit",
+    "repeatInterval",
+    "enabled",
+    "lastExecutedDateEpochDay",
+    "nextDueDateEpochDay",
+    "createdAt",
+    "updatedAt"
+)
+private val RECURRING_EXECUTION_HEADERS = listOf(
+    "id",
+    "ruleId",
+    "occurrenceDateEpochDay",
+    "generatedTransactionId",
+    "executedAt",
+    "createdAt"
 )
 
 private fun parseCategoryRow(row: Map<String, String>): CategoryEntity {
@@ -417,6 +594,36 @@ private fun parseNoteHistoryRow(row: Map<String, String>): CategoryNoteHistoryEn
         lastUsedAt = row.requiredLong("lastUsedAt"),
         createdAt = row.requiredLong("createdAt"),
         updatedAt = row.requiredLong("updatedAt")
+    )
+}
+
+private fun parseRecurringRuleRow(row: Map<String, String>): RecurringAccountingRuleEntity {
+    return RecurringAccountingRuleEntity(
+        id = row.requiredLong("id"),
+        type = row.requiredTransactionType("type"),
+        amount = row.requiredDouble("amount"),
+        categoryId = row.requiredLong("categoryId"),
+        note = row.required("note"),
+        tagsSerialized = row.required("tagsSerialized"),
+        firstOccurrenceDateEpochDay = row.requiredLong("firstOccurrenceDateEpochDay"),
+        repeatUnit = row.requiredRecurrenceUnit("repeatUnit"),
+        repeatInterval = row.requiredInt("repeatInterval"),
+        enabled = row.requiredBoolean("enabled"),
+        lastExecutedDateEpochDay = row.optionalLong("lastExecutedDateEpochDay"),
+        nextDueDateEpochDay = row.optionalLong("nextDueDateEpochDay"),
+        createdAt = row.requiredLong("createdAt"),
+        updatedAt = row.requiredLong("updatedAt")
+    )
+}
+
+private fun parseRecurringExecutionRow(row: Map<String, String>): RecurringAccountingExecutionEntity {
+    return RecurringAccountingExecutionEntity(
+        id = row.requiredLong("id"),
+        ruleId = row.requiredLong("ruleId"),
+        occurrenceDateEpochDay = row.requiredLong("occurrenceDateEpochDay"),
+        generatedTransactionId = row.optionalLong("generatedTransactionId"),
+        executedAt = row.requiredLong("executedAt"),
+        createdAt = row.requiredLong("createdAt")
     )
 }
 
@@ -592,6 +799,12 @@ private fun Map<String, String>.requiredLong(key: String): Long {
     return required(key).toLongOrNull() ?: error("字段 $key 不是有效的 Long")
 }
 
+private fun Map<String, String>.optionalLong(key: String): Long? {
+    val value = this[key]?.trim().orEmpty()
+    if (value.isBlank()) return null
+    return value.toLongOrNull() ?: error("字段 $key 不是有效的 Long")
+}
+
 private fun Map<String, String>.requiredInt(key: String): Int {
     return required(key).toIntOrNull() ?: error("字段 $key 不是有效的 Int")
 }
@@ -611,6 +824,11 @@ private fun Map<String, String>.requiredBoolean(key: String): Boolean {
 private fun Map<String, String>.requiredTransactionType(key: String): TransactionType {
     return runCatching { TransactionType.valueOf(required(key)) }
         .getOrElse { error("字段 $key 不是有效的交易类型") }
+}
+
+private fun Map<String, String>.requiredRecurrenceUnit(key: String): RecurrenceUnit {
+    return runCatching { RecurrenceUnit.valueOf(required(key)) }
+        .getOrElse { error("字段 $key 不是有效的重复周期") }
 }
 
 private inline fun <T : AutoCloseable?, R> T.useWithoutClosing(block: (T) -> R): R {
