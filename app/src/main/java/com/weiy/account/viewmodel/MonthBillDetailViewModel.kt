@@ -57,6 +57,7 @@ data class MonthBillDetailUiState(
     val expenseCategories: List<MonthCategoryRatioItem> = emptyList(),
     val incomeCategories: List<MonthCategoryRatioItem> = emptyList(),
     val expenseRanking: List<MonthExpenseRankItem> = emptyList(),
+    val expenseRankingAll: List<MonthExpenseRankItem> = emptyList(),
     val expenseDailyTotals: List<Double> = List(yearMonth.lengthOfMonth()) { 0.0 },
     val maxExpenseDay: Int? = null,
     val maxExpenseDayAmount: Double = 0.0,
@@ -129,9 +130,8 @@ class MonthBillDetailViewModel(
             .asSequence()
             .filter { it.type == TransactionType.EXPENSE }
             .toList()
-        val expenseRanking = expenseTransactions
+        val expenseRankingAll = expenseTransactions
             .sortedByDescending { it.amount }
-            .take(TOP_RANKING_COUNT)
             .map {
                 MonthExpenseRankItem(
                     categoryName = it.categoryName,
@@ -139,6 +139,7 @@ class MonthBillDetailViewModel(
                     dateTime = it.dateTime
                 )
             }
+        val expenseRanking = expenseRankingAll.take(TOP_RANKING_COUNT)
 
         val expenseDailyTotals = buildExpenseDailyTotals(expenseTransactions, selectedMonth)
         val maxExpensePair = expenseDailyTotals
@@ -181,6 +182,7 @@ class MonthBillDetailViewModel(
             expenseCategories = expenseCategories,
             incomeCategories = incomeCategories,
             expenseRanking = expenseRanking,
+            expenseRankingAll = expenseRankingAll,
             expenseDailyTotals = expenseDailyTotals,
             maxExpenseDay = maxExpenseDay,
             maxExpenseDayAmount = maxExpenseDayAmount,

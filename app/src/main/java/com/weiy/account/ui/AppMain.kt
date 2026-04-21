@@ -56,6 +56,7 @@ import com.weiy.account.navigation.toStartDestinationOrNull
 import com.weiy.account.ui.screens.CategoryManageScreen
 import com.weiy.account.ui.screens.HomeScreen
 import com.weiy.account.ui.screens.MonthBillDetailScreen
+import com.weiy.account.ui.screens.MonthExpenseRankScreen
 import com.weiy.account.ui.screens.OnboardingScreen
 import com.weiy.account.ui.screens.RecurringAccountingCreateScreen
 import com.weiy.account.ui.screens.RecurringAccountingListScreen
@@ -108,6 +109,7 @@ fun AppMain(
     val isHomeRoute = currentRoute == AppRoute.Home
     var homeFabScrollUpEnabled by remember { mutableStateOf(false) }
     var homeScrollToTopSignal by remember { mutableIntStateOf(0) }
+    var monthExpenseRankSearchSignal by remember { mutableIntStateOf(0) }
     var handledOpenTransactionEditRequestKey by remember { mutableIntStateOf(0) }
     var fabHiddenByLongPress by rememberSaveable { mutableStateOf(false) }
     var fabLongPressTriggered by remember { mutableStateOf(false) }
@@ -177,6 +179,10 @@ fun AppMain(
                     actions = {
                         if (currentRoute == AppRoute.Home) {
                             IconButton(onClick = { backStack.add(AppRoute.Search) }) {
+                                Icon(Icons.Default.Search, contentDescription = "搜索")
+                            }
+                        } else if (currentRoute is AppRoute.MonthExpenseRank) {
+                            IconButton(onClick = { monthExpenseRankSearchSignal += 1 }) {
                                 Icon(Icons.Default.Search, contentDescription = "搜索")
                             }
                         }
@@ -343,7 +349,27 @@ fun AppMain(
                             transactionRepository = appContainer.transactionRepository
                         )
                     )
-                    MonthBillDetailScreen(viewModel = vm)
+                    MonthBillDetailScreen(
+                        viewModel = vm,
+                        onOpenExpenseRank = { year, month ->
+                            backStack.add(AppRoute.MonthExpenseRank(year = year, month = month))
+                        }
+                    )
+                }
+
+                entry<AppRoute.MonthExpenseRank> { route ->
+                    val vm: MonthBillDetailViewModel = viewModel(
+                        key = "month_expense_rank_${route.year}_${route.month}",
+                        factory = MonthBillDetailViewModel.factory(
+                            year = route.year,
+                            month = route.month,
+                            transactionRepository = appContainer.transactionRepository
+                        )
+                    )
+                    MonthExpenseRankScreen(
+                        viewModel = vm,
+                        searchTriggerKey = monthExpenseRankSearchSignal
+                    )
                 }
 
                 entry<AppRoute.Stats> {
@@ -443,6 +469,7 @@ private fun routeTitle(route: AppRoute): String {
         AppRoute.RecurringAccountingList -> "定时记账"
         AppRoute.RecurringAccountingCreate -> "添加定时记账"
         is AppRoute.MonthBillDetail -> "${route.year}年${route.month}月账单"
+        is AppRoute.MonthExpenseRank -> "${route.year}年${route.month}月支出排行"
         is AppRoute.TransactionEdit -> if (route.transactionId > 0L) "编辑明细" else "新增明细"
     }
 }

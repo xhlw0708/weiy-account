@@ -2,6 +2,7 @@
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,21 +18,30 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,10 +72,12 @@ import java.util.Locale
 import kotlin.math.abs
 
 private val rankDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日")
+private val rankListDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MM月dd日")
 
 @Composable
 fun MonthBillDetailScreen(
     viewModel: MonthBillDetailViewModel,
+    onOpenExpenseRank: (year: Int, month: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -82,7 +94,12 @@ fun MonthBillDetailScreen(
         }
 
         item {
-            ExpenseCategoryCard(uiState = uiState)
+            ExpenseCategoryCard(
+                uiState = uiState,
+                onOpenExpenseRank = {
+                    onOpenExpenseRank(uiState.yearMonth.year, uiState.yearMonth.monthValue)
+                }
+            )
         }
 
         item {
@@ -192,7 +209,145 @@ private fun AmountProgressRow(
 }
 
 @Composable
-private fun ExpenseCategoryCard(uiState: MonthBillDetailUiState) {
+fun MonthExpenseRankScreen(
+    viewModel: MonthBillDetailViewModel,
+    searchTriggerKey: Int,
+    modifier: Modifier = Modifier
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    var showSearchField by rememberSaveable { mutableStateOf(false) }
+    var searchKeyword by rememberSaveable { mutableStateOf("") }
+    var lastHandledSearchTrigger by rememberSaveable { mutableStateOf(searchTriggerKey) }
+    val filteredRanking = remember(uiState.expenseRankingAll, searchKeyword) {
+        if (searchKeyword.isBlank()) {
+            uiState.expenseRankingAll
+        } else {
+            val keyword = searchKeyword.trim()
+            uiState.expenseRankingAll.filter { item ->
+                item.categoryName.contains(keyword, ignoreCase = true)
+            }
+        }
+    }
+    LaunchedEffect(searchTriggerKey) {
+        if (searchTriggerKey > lastHandledSearchTrigger) {
+            showSearchField = true
+            lastHandledSearchTrigger = searchTriggerKey
+        }
+    }
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        if (showSearchField) {
+            item {
+                OutlinedTextField(
+                    value = searchKeyword,
+                    onValueChange = { searchKeyword = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    singleLine = true,
+                    placeholder = {
+                        Text(text = "搜索类别")
+                    },
+                    trailingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "清空搜索",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.clickable {
+                                showSearchField = false
+                                searchKeyword = ""
+                            }
+                        )
+                    }
+                )
+            }
+        }
+
+        if (uiState.expenseRankingAll.isEmpty()) {
+            item {
+                Text(
+                    text = "暂无支出排行",
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else if (filteredRanking.isEmpty()) {
+            item {
+                Text(
+                    text = "未找到匹配的支出排行",
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            itemsIndexed(filteredRanking) { _, item ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CategoryIconSymbol(
+                                name = item.categoryName,
+                                type = TransactionType.EXPENSE,
+                                iconKey = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 10.dp)
+                        ) {
+                            Text(
+                                text = item.categoryName,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = toLocalDate(item.dateTime).format(rankListDateFormatter),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = "-${formatAmount(item.amount)}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExpenseCategoryCard(
+    uiState: MonthBillDetailUiState,
+    onOpenExpenseRank: () -> Unit
+) {
     DetailCard {
         Text(
             text = "支出类别",
@@ -254,6 +409,9 @@ private fun ExpenseCategoryCard(uiState: MonthBillDetailUiState) {
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
+                    modifier = Modifier.clickable {
+                        onOpenExpenseRank()
+                    },
                     text = "查看更多",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
