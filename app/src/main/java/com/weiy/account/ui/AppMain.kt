@@ -55,6 +55,7 @@ import com.weiy.account.navigation.toAppRoute
 import com.weiy.account.navigation.toStartDestinationOrNull
 import com.weiy.account.ui.screens.CategoryManageScreen
 import com.weiy.account.ui.screens.HomeScreen
+import com.weiy.account.ui.screens.MonthBillDetailScreen
 import com.weiy.account.ui.screens.OnboardingScreen
 import com.weiy.account.ui.screens.RecurringAccountingCreateScreen
 import com.weiy.account.ui.screens.RecurringAccountingListScreen
@@ -65,6 +66,7 @@ import com.weiy.account.ui.screens.TransactionEditScreen
 import com.weiy.account.ui.screens.TransactionListScreen
 import com.weiy.account.viewmodel.CategoryManageViewModel
 import com.weiy.account.viewmodel.HomeViewModel
+import com.weiy.account.viewmodel.MonthBillDetailViewModel
 import com.weiy.account.viewmodel.RecurringAccountingCreateViewModel
 import com.weiy.account.viewmodel.RecurringAccountingListViewModel
 import com.weiy.account.viewmodel.SearchViewModel
@@ -325,8 +327,23 @@ fun AppMain(
                     TransactionListScreen(
                         viewModel = vm,
                         onAddTransaction = { backStack.add(AppRoute.TransactionEdit()) },
-                        onOpenTransaction = { id -> backStack.add(AppRoute.TransactionEdit(id)) }
+                        onOpenTransaction = { id -> backStack.add(AppRoute.TransactionEdit(id)) },
+                        onOpenMonthBillDetail = { year, month ->
+                            backStack.add(AppRoute.MonthBillDetail(year = year, month = month))
+                        }
                     )
+                }
+
+                entry<AppRoute.MonthBillDetail> { route ->
+                    val vm: MonthBillDetailViewModel = viewModel(
+                        key = "month_bill_detail_${route.year}_${route.month}",
+                        factory = MonthBillDetailViewModel.factory(
+                            year = route.year,
+                            month = route.month,
+                            transactionRepository = appContainer.transactionRepository
+                        )
+                    )
+                    MonthBillDetailScreen(viewModel = vm)
                 }
 
                 entry<AppRoute.Stats> {
@@ -425,6 +442,7 @@ private fun routeTitle(route: AppRoute): String {
         AppRoute.CategoryManage -> "分类管理"
         AppRoute.RecurringAccountingList -> "定时记账"
         AppRoute.RecurringAccountingCreate -> "添加定时记账"
+        is AppRoute.MonthBillDetail -> "${route.year}年${route.month}月账单"
         is AppRoute.TransactionEdit -> if (route.transactionId > 0L) "编辑明细" else "新增明细"
     }
 }

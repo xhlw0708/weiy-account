@@ -58,6 +58,7 @@ fun TransactionListScreen(
     viewModel: TransactionListViewModel,
     onAddTransaction: () -> Unit,
     onOpenTransaction: (Long) -> Unit,
+    onOpenMonthBillDetail: (year: Int, month: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -86,7 +87,10 @@ fun TransactionListScreen(
         }
 
         item {
-            BillTable(uiState = uiState)
+            BillTable(
+                uiState = uiState,
+                onOpenMonthBillDetail = onOpenMonthBillDetail
+            )
         }
 
         if (uiState.showYearHint) {
@@ -363,7 +367,10 @@ private fun SummaryItem(
 }
 
 @Composable
-private fun BillTable(uiState: TransactionListUiState) {
+private fun BillTable(
+    uiState: TransactionListUiState,
+    onOpenMonthBillDetail: (year: Int, month: Int) -> Unit
+) {
     val isMonth = uiState.tab == BillTab.MONTH
 
     Surface(
@@ -380,7 +387,10 @@ private fun BillTable(uiState: TransactionListUiState) {
                     EmptyRow(text = "${uiState.selectedYear}年暂无账单")
                 } else {
                     uiState.monthBills.forEachIndexed { index, item ->
-                        BillMonthRow(item = item)
+                        BillMonthRow(
+                            item = item,
+                            onClick = { onOpenMonthBillDetail(uiState.selectedYear, item.month) }
+                        )
                         if (index != uiState.monthBills.lastIndex) {
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
@@ -444,10 +454,14 @@ private fun BillTableHeader(isMonth: Boolean) {
 }
 
 @Composable
-private fun BillMonthRow(item: MonthBill) {
+private fun BillMonthRow(
+    item: MonthBill,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

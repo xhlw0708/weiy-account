@@ -35,6 +35,9 @@ sealed interface AppRoute : NavKey {
 
     @Serializable
     data object RecurringAccountingCreate : AppRoute
+
+    @Serializable
+    data class MonthBillDetail(val year: Int, val month: Int) : AppRoute
 }
 
 fun StartDestination.toAppRoute(): AppRoute {
