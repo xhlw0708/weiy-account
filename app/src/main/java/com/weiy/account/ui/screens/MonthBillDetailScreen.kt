@@ -40,9 +40,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.weiy.account.R
 import com.weiy.account.model.TransactionType
 import com.weiy.account.utils.formatAmount
 import com.weiy.account.utils.toLocalDate
@@ -673,10 +675,10 @@ private fun CategoryChangeRow(
             color = MaterialTheme.colorScheme.onSurface
         )
 
-        val color = if (item.isIncrease) {
+        val iconColor = if (item.isIncrease) {
             MaterialTheme.colorScheme.error
         } else {
-            MaterialTheme.colorScheme.tertiary
+            androidx.compose.ui.graphics.Color(0xFF2E7D32)
         }
         Icon(
             imageVector = if (item.isIncrease) {
@@ -685,7 +687,7 @@ private fun CategoryChangeRow(
                 Icons.Default.KeyboardArrowDown
             },
             contentDescription = null,
-            tint = color,
+            tint = iconColor,
             modifier = Modifier.size(16.dp)
         )
         Spacer(modifier = Modifier.width(2.dp))
@@ -696,7 +698,7 @@ private fun CategoryChangeRow(
                 "下降 ${formatAmount(abs(item.delta))}"
             },
             style = MaterialTheme.typography.bodyMedium,
-            color = color
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -788,8 +790,8 @@ private fun IncomeCategoryRow(item: MonthCategoryRatioItem) {
             modifier = Modifier.fillMaxWidth().height(6.dp),
             color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-            strokeCap = StrokeCap.Butt,
-            gapSize = 0.dp
+            strokeCap = StrokeCap.Round,
+            gapSize = 1.dp
         )
     }
 }
