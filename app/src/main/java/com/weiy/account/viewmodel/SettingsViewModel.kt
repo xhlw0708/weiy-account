@@ -50,6 +50,10 @@ class SettingsViewModel(
         settingsRepository.setNotificationQuickEntryEnabled(enabled)
     }
 
+    fun setCalendarEntryEnabled(enabled: Boolean) {
+        settingsRepository.setCalendarEntryEnabled(enabled)
+    }
+
     fun updateDailyReminder(hour: Int, minute: Int) {
         settingsRepository.updateDailyReminder(hour, minute)
     }

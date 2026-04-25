@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +23,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -53,12 +55,14 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.weiy.account.R
 import com.weiy.account.ui.components.TransactionListItem
 import com.weiy.account.utils.currentYearMonth
 import com.weiy.account.utils.formatAmount
@@ -72,7 +76,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    onQuickAdd: () -> Unit,
+    calendarEntryEnabled: Boolean,
     onOpenTransaction: (Long) -> Unit,
     onFirstItemCompletelyInvisibleChanged: (Boolean) -> Unit = {},
     scrollToTopSignal: Int = 0,
@@ -211,18 +215,31 @@ fun HomeScreen(
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = uiState.monthLabel,
-                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                                )
-                                Icon(
-                                    modifier = Modifier.clickable { showMonthPicker = true },
-                                    imageVector = Icons.Default.ArrowDropDown,
-                                    contentDescription = "选择时间",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = uiState.monthLabel,
+                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                                    )
+                                    Icon(
+                                        modifier = Modifier.clickable { showMonthPicker = true },
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "选择时间",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (calendarEntryEnabled) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_switch_over),
+                                        contentDescription = "日历入口",
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .padding(end = 2.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -255,15 +272,18 @@ fun HomeScreen(
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "最近记录",
                             style = MaterialTheme.typography.titleMedium
                         )
-                        TextButton(onClick = onQuickAdd) {
-                            Text("快速记账")
-                        }
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = "日历",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
 
@@ -585,3 +605,4 @@ private fun IncomeExpenseProgressBar(
         }
     }
 }
+

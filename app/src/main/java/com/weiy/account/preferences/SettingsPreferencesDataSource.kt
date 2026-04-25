@@ -27,6 +27,7 @@ class SettingsPreferencesDataSource(context: Context) {
             KEY_NOTIFICATION_QUICK_ENTRY_ENABLED,
             false
         )
+        val calendarEntryEnabled = preferences.getBoolean(KEY_CALENDAR_ENTRY_ENABLED, false)
         val reminderEnabled = preferences.getBoolean(KEY_REMINDER_ENABLED, false)
         val reminderHour = preferences.getInt(KEY_REMINDER_HOUR, DEFAULT_REMINDER_HOUR)
             .coerceIn(0, 23)
@@ -38,6 +39,7 @@ class SettingsPreferencesDataSource(context: Context) {
             defaultStartDestination = defaultStart,
             darkModeEnabled = darkMode,
             notificationQuickEntryEnabled = notificationQuickEntryEnabled,
+            calendarEntryEnabled = calendarEntryEnabled,
             reminderEnabled = reminderEnabled,
             reminderHour = reminderHour,
             reminderMinute = reminderMinute
@@ -62,6 +64,10 @@ class SettingsPreferencesDataSource(context: Context) {
 
     fun setNotificationQuickEntryEnabled(value: Boolean) {
         preferences.edit { putBoolean(KEY_NOTIFICATION_QUICK_ENTRY_ENABLED, value) }
+    }
+
+    fun setCalendarEntryEnabled(value: Boolean) {
+        preferences.edit { putBoolean(KEY_CALENDAR_ENTRY_ENABLED, value) }
     }
 
     fun updateDailyReminder(hour: Int, minute: Int) {
@@ -116,6 +122,7 @@ class SettingsPreferencesDataSource(context: Context) {
         const val KEY_DEFAULT_START_DESTINATION = "defaultStartDestination"
         const val KEY_DARK_MODE_ENABLED = "darkModeEnabled"
         const val KEY_NOTIFICATION_QUICK_ENTRY_ENABLED = "notificationQuickEntryEnabled"
+        const val KEY_CALENDAR_ENTRY_ENABLED = "calendarEntryEnabled"
         const val KEY_REMINDER_ENABLED = "reminderEnabled"
         const val KEY_REMINDER_HOUR = "reminderHour"
         const val KEY_REMINDER_MINUTE = "reminderMinute"

@@ -348,8 +348,8 @@ fun SettingsScreen(
                     icon = Icons.Default.DateRange,
                     title = "日历设置",
                     subtitle = "开启后将在首页显示日历功能入口",
-                    checked = false,
-                    onCheckedChange = {}
+                    checked = settings.calendarEntryEnabled,
+                    onCheckedChange = viewModel::setCalendarEntryEnabled
                 )
             }
         }

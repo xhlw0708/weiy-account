@@ -58,6 +58,11 @@ class SettingsRepository(
         _settings.value = dataSource.readSettings()
     }
 
+    fun setCalendarEntryEnabled(enabled: Boolean) {
+        dataSource.setCalendarEntryEnabled(enabled)
+        _settings.value = dataSource.readSettings()
+    }
+
     fun updateDailyReminder(hour: Int, minute: Int) {
         dataSource.updateDailyReminder(hour, minute)
         _settings.value = dataSource.readSettings()

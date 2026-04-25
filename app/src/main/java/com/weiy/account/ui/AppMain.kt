@@ -314,7 +314,7 @@ fun AppMain(
                     )
                     HomeScreen(
                         viewModel = vm,
-                        onQuickAdd = { backStack.add(AppRoute.TransactionEdit()) },
+                        calendarEntryEnabled = settings.calendarEntryEnabled,
                         onOpenTransaction = { id -> backStack.add(AppRoute.TransactionEdit(id)) },
                         onFirstItemCompletelyInvisibleChanged = { invisible ->
                             homeFabScrollUpEnabled = invisible

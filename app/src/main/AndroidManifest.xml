@@ -16,6 +16,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WeiyAccount">
         <activity
+            android:name=".DemoActivity"
+            android:exported="true" />
+        <activity
             android:name=".MainActivity"
             android:enableOnBackInvokedCallback="false"
             android:exported="true"
@@ -43,7 +46,6 @@
         <receiver
             android:name=".reminder.AccountingReminderReceiver"
             android:exported="false" />
-
         <receiver
             android:name=".reminder.ReminderRestoreReceiver"
             android:enabled="true"
