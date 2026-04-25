@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.weiy.account.model.TransactionRecord
 import com.weiy.account.model.TransactionType
+import com.weiy.account.ui.screens.CategoryIconSymbol
 import com.weiy.account.utils.formatAmount
 import com.weiy.account.utils.formatTime
 
@@ -43,11 +44,6 @@ fun TransactionListItem(
         MaterialTheme.colorScheme.primaryContainer
     } else {
         MaterialTheme.colorScheme.errorContainer
-    }
-    val tagTextColor = if (isIncome) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onErrorContainer
     }
 
     Surface(
@@ -72,10 +68,11 @@ fun TransactionListItem(
                     .background(tagBgColor),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = if (isIncome) "入" else "出",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = tagTextColor
+                CategoryIconSymbol(
+                    name = transaction.categoryName.ifBlank { if (isIncome) "收" else "支" },
+                    type = transaction.type,
+                    iconKey = null,
+                    modifier = Modifier.size(16.dp)
                 )
             }
 
@@ -84,13 +81,8 @@ fun TransactionListItem(
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    text = transaction.categoryName,
+                    text = transaction.note.ifBlank { transaction.categoryName },
                     style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = transaction.note.ifBlank { "" },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

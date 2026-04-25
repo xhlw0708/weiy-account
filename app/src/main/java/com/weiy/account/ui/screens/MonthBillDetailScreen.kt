@@ -320,9 +320,8 @@ fun MonthExpenseRankScreen(
                                 .padding(start = 10.dp)
                         ) {
                             Text(
-                                text = item.categoryName,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface
+                                text = item.note.ifBlank { item.categoryName },
+                                style = MaterialTheme.typography.titleMedium
                             )
                             Text(
                                 text = toLocalDate(item.dateTime).format(rankListDateFormatter),

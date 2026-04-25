@@ -31,7 +31,8 @@ data class MonthCategoryRatioItem(
 data class MonthExpenseRankItem(
     val categoryName: String,
     val amount: Double,
-    val dateTime: Long
+    val dateTime: Long,
+    val note: String
 )
 
 data class MonthCompareBarItem(
@@ -136,7 +137,8 @@ class MonthBillDetailViewModel(
                 MonthExpenseRankItem(
                     categoryName = it.categoryName,
                     amount = it.amount,
-                    dateTime = it.dateTime
+                    dateTime = it.dateTime,
+                    note = it.note
                 )
             }
         val expenseRanking = expenseRankingAll.take(TOP_RANKING_COUNT)
