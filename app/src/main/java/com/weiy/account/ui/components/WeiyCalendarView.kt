@@ -87,7 +87,7 @@ fun WeiyCalendar(
         modifier = modifier
             .fillMaxWidth()
             .background(colorScheme.surface)
-            .padding(horizontal = 16.dp, vertical = 14.dp)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         WeiyCalendarTopBar(
             selectedView = view,
@@ -99,7 +99,7 @@ fun WeiyCalendar(
             }
         )
 
-        Spacer(modifier = Modifier.height(26.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         WeiyCalendarNavigator(
             visibleMonth = visibleMonth,
@@ -128,7 +128,7 @@ fun WeiyCalendar(
             }
         )
 
-        Spacer(modifier = Modifier.height(22.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         when (view) {
             WeiyCalendarView.Day -> WeiyDayGrid(
@@ -193,7 +193,7 @@ private fun WeiyCalendarTopBar(
             onClick = onJumpToToday
         )
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
         WeiySegmentedSwitch(
             modifier = Modifier.weight(1f),
@@ -220,8 +220,8 @@ private fun WeiyCalendarNavigator(
         WeiyCalendarView.Year -> "${visibleMonth.year}年"
     }
     val colorScheme = MaterialTheme.colorScheme
-    val navigatorHeight = 44.dp
-    val navigatorButtonSize = 44.dp
+    val navigatorHeight = 30.dp
+    val navigatorButtonSize = 30.dp
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -235,26 +235,26 @@ private fun WeiyCalendarNavigator(
             onClick = onPrevious
         )
 
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(4.dp))
 
         Box(
             modifier = Modifier
                 .height(navigatorHeight)
-                .width(200.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .width(130.dp)
+                .clip(RoundedCornerShape(7.dp))
                 .background(colorScheme.surface)
-                .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
+                .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(7.dp)),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = title,
                 color = colorScheme.onSurface,
                 fontWeight = FontWeight.Bold,
-                fontSize = 23.sp
+                fontSize = 15.sp
             )
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(4.dp))
 
         WeiyNavButton(
             text = "›",
@@ -284,13 +284,12 @@ private fun WeiyDayGrid(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
                 color = colorScheme.onSurface,
-                fontSize = 21.sp,
-                fontWeight = FontWeight.Medium
+                fontSize = 13.sp,
             )
         }
     }
 
-    Spacer(modifier = Modifier.height(10.dp))
+    Spacer(modifier = Modifier.height(4.dp))
 
     dates.chunked(7).forEach { row ->
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -319,21 +318,18 @@ private fun WeiyDayCell(
 ) {
     Box(
         modifier = modifier
-            .aspectRatio(1f)
-            .padding(3.dp)
+            .height(30.dp)
+            .padding(0.dp)
     ) {
         if (date == null) return@Box
 
         val hasEntry = entryCount > 0
-        val isTodayNotWritten = isToday && !hasEntry
-        val shape = RoundedCornerShape(8.dp)
+        val shape = RoundedCornerShape(5.dp)
         val colorScheme = MaterialTheme.colorScheme
-        val mutedTextColor = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
 
         val bg = when {
             isSelected -> colorScheme.primary
             hasEntry -> colorScheme.primaryContainer
-            isTodayNotWritten -> colorScheme.surfaceVariant
             else -> Color.Transparent
         }
 
@@ -341,34 +337,27 @@ private fun WeiyDayCell(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .shadow(if (isSelected) 10.dp else 0.dp, shape)
+                .shadow(if (isSelected) 4.dp else 0.dp, shape)
                 .clip(shape)
                 .background(bg)
                 .fastPressClickable(onClick = onClick)
-                .padding(vertical = 6.dp),
+                .padding(vertical = 1.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = if (isTodayNotWritten) "今" else date.dayOfMonth.toString(),
+                text = if (isToday) "今" else date.dayOfMonth.toString(),
                 color = if (isSelected) colorScheme.onPrimary else colorScheme.onSurface,
-                fontSize = 22.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
 
-            when {
-                hasEntry -> Text(
+            if (hasEntry) {
+                Text(
                     text = "${entryCount}篇",
                     color = if (isSelected) colorScheme.onPrimary else colorScheme.primary,
-                    fontSize = 15.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
-                )
-
-                isTodayNotWritten -> Text(
-                    text = "未写",
-                    color = mutedTextColor,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium
                 )
             }
         }
@@ -387,8 +376,8 @@ private fun WeiyWeekGrid(
     WeiyFixedGrid(
         items = weeks,
         columns = 3,
-        horizontalSpacing = 8.dp,
-        verticalSpacing = 8.dp
+        horizontalSpacing = 3.dp,
+        verticalSpacing = 3.dp
     ) { week ->
         val start = week.first
         val end = week.second
@@ -416,8 +405,8 @@ private fun WeiyMonthGrid(
     WeiyFixedGrid(
         items = months,
         columns = 4,
-        horizontalSpacing = 8.dp,
-        verticalSpacing = 8.dp
+        horizontalSpacing = 3.dp,
+        verticalSpacing = 3.dp
     ) { month ->
         WeiySummaryCard(
             title = if (month == YearMonth.from(today)) "本月" else "${month.monthValue}月",
@@ -440,13 +429,13 @@ private fun WeiyYearGrid(
     val endYear = maxOf(visibleYear, today.year)
     val years = remember(startYear, endYear) { (startYear..endYear).toList() }
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(12.dp))
 
     WeiyFixedGrid(
         items = years,
         columns = 3,
-        horizontalSpacing = 8.dp,
-        verticalSpacing = 8.dp
+        horizontalSpacing = 3.dp,
+        verticalSpacing = 3.dp
     ) { year ->
         val count = entriesByYear[year]?.size ?: 0
 
@@ -467,41 +456,36 @@ private fun WeiySummaryCard(
     selected: Boolean,
     modifier: Modifier = Modifier,
     disabled: Boolean = false,
-    height: Dp = 108.dp,
+    height: Dp = 56.dp,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(9.dp)
+    val shape = RoundedCornerShape(7.dp)
     val colorScheme = MaterialTheme.colorScheme
     val mutedTextColor = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-
-    val bg = when {
-        selected -> colorScheme.primary
-        disabled -> colorScheme.surfaceVariant
-        else -> colorScheme.primaryContainer
-    }
+    val bg = if (selected) colorScheme.primary else colorScheme.surfaceVariant
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
-            .shadow(if (selected) 10.dp else 0.dp, shape)
+            .shadow(if (selected) 4.dp else 0.dp, shape)
             .clip(shape)
             .background(bg)
             .fastPressClickable(onClick = onClick)
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
             text = title,
             color = if (selected) colorScheme.onPrimary else colorScheme.onSurface,
-            fontSize = 24.sp,
+            fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
 
         if (!subtitle.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
             Text(
                 text = subtitle,
@@ -510,7 +494,7 @@ private fun WeiySummaryCard(
                     disabled -> mutedTextColor
                     else -> colorScheme.primary
                 },
-                fontSize = 18.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -525,14 +509,14 @@ private fun WeiySegmentedSwitch(
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val selectedShape = RoundedCornerShape(22.dp)
+    val selectedShape = RoundedCornerShape(15.dp)
 
     Row(
         modifier = modifier
-            .height(44.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .height(30.dp)
+            .clip(RoundedCornerShape(15.dp))
             .background(colorScheme.surfaceVariant)
-            .padding(2.dp),
+            .padding(1.5.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         options.forEachIndexed { index, text ->
@@ -555,7 +539,7 @@ private fun WeiySegmentedSwitch(
                 Text(
                     text = text,
                     color = if (selected) colorScheme.primary else colorScheme.onSurfaceVariant,
-                    fontSize = 20.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -575,18 +559,18 @@ private fun WeiyTodayButton(
 
     Box(
         modifier = Modifier
-            .width(94.dp)
-            .height(44.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .width(60.dp)
+            .height(30.dp)
+            .clip(RoundedCornerShape(15.dp))
             .background(backgroundColor)
-            .border(1.dp, borderColor, RoundedCornerShape(24.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(15.dp))
             .fastPressClickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = "今",
             color = textColor,
-            fontSize = 20.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Bold
         )
     }
@@ -607,9 +591,9 @@ private fun WeiyNavButton(
     Box(
         modifier = Modifier
             .size(size)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(7.dp))
             .background(backgroundColor)
-            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(7.dp))
             .fastPressClickable(
                 enabled = enabled,
                 showIndication = true,
@@ -620,7 +604,7 @@ private fun WeiyNavButton(
         Text(
             text = text,
             color = textColor,
-            fontSize = 26.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.Light
         )
     }
@@ -728,4 +712,3 @@ private fun Modifier.fastPressClickable(
             onClick = onClick
         )
 }
-

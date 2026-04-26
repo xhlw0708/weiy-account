@@ -62,7 +62,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 import com.weiy.account.R
+import com.weiy.account.ui.components.WeiyCalendar
+import com.weiy.account.ui.components.WeiyCalendarView
+import java.time.LocalDate
 import com.weiy.account.ui.components.TransactionListItem
 import com.weiy.account.utils.currentYearMonth
 import com.weiy.account.utils.formatAmount
@@ -86,6 +92,20 @@ fun HomeScreen(
     val listState = rememberLazyListState()
     val density = LocalDensity.current
     var showMonthPicker by remember { mutableStateOf(false) }
+    var isCardFlipped by remember { mutableStateOf(false) }
+    val flipRotation by animateFloatAsState(
+        targetValue = if (isCardFlipped) 180f else 0f,
+        animationSpec = tween(durationMillis = 500)
+    )
+    var calendarVisibleMonth by remember { mutableStateOf(uiState.currentMonth) }
+    var calendarSelectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var calendarView by remember { mutableStateOf(WeiyCalendarView.Month) }
+
+    LaunchedEffect(uiState.currentMonth) {
+        if (!isCardFlipped) {
+            calendarVisibleMonth = uiState.currentMonth
+        }
+    }
 
     val pullTriggerPx = with(density) { 96.dp.toPx() }
     val pullMaxPx = with(density) { 150.dp.toPx() }
@@ -206,65 +226,120 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
-                    ElevatedCard {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = uiState.monthLabel,
-                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                                    )
-                                    Icon(
-                                        modifier = Modifier.clickable { showMonthPicker = true },
-                                        imageVector = Icons.Default.ArrowDropDown,
-                                        contentDescription = "选择时间",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        // Front - Summary card
+                        if (flipRotation < 90f) {
+                            ElevatedCard(
+                                modifier = Modifier.graphicsLayer {
+                                    rotationY = flipRotation
+                                    cameraDistance = 12f * density.density
                                 }
-                                if (calendarEntryEnabled) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_switch_over),
-                                        contentDescription = "日历入口",
-                                        modifier = Modifier
-                                            .size(18.dp)
-                                            .padding(end = 2.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = uiState.monthLabel,
+                                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                                            )
+                                            Icon(
+                                                modifier = Modifier.clickable { showMonthPicker = true },
+                                                imageVector = Icons.Default.ArrowDropDown,
+                                                contentDescription = "选择时间",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        if (calendarEntryEnabled) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.ic_switch_over),
+                                                contentDescription = "日历入口",
+                                                modifier = Modifier
+                                                    .size(18.dp)
+                                                    .padding(end = 2.dp)
+                                                    .clickable { isCardFlipped = true },
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        MetricItem(
+                                            title = "本月支出",
+                                            amount = formatAmount(uiState.summary.expenseTotal),
+                                            amountColor = Color(0xFFD32F2F)
+                                        )
+                                        MetricItem(
+                                            title = "本月收入",
+                                            amount = formatAmount(uiState.summary.incomeTotal),
+                                            amountColor = Color(0xFF2E7D32)
+                                        )
+                                        MetricItem(
+                                            title = "结余",
+                                            amount = formatAmount(uiState.summary.balance),
+                                            amountColor = Color(0xFF1565C0)
+                                        )
+                                    }
+                                    IncomeExpenseProgressBar(
+                                        income = uiState.summary.incomeTotal,
+                                        expense = uiState.summary.expenseTotal
                                     )
                                 }
                             }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                        }
+                        // Back - Calendar
+                        if (flipRotation > 90f) {
+                            ElevatedCard(
+                                modifier = Modifier.graphicsLayer {
+                                    rotationY = flipRotation + 180f
+                                    cameraDistance = 12f * density.density
+                                }
                             ) {
-                                MetricItem(
-                                    title = "本月支出",
-                                    amount = formatAmount(uiState.summary.expenseTotal),
-                                    amountColor = Color(0xFFD32F2F)
-                                )
-                                MetricItem(
-                                    title = "本月收入",
-                                    amount = formatAmount(uiState.summary.incomeTotal),
-                                    amountColor = Color(0xFF2E7D32)
-                                )
-                                MetricItem(
-                                    title = "结余",
-                                    amount = formatAmount(uiState.summary.balance),
-                                    amountColor = Color(0xFF1565C0)
-                                )
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(8.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "日历",
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                        )
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_switch_over),
+                                            contentDescription = "返回",
+                                            modifier = Modifier
+                                                .size(18.dp)
+                                                .clickable { isCardFlipped = false },
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    WeiyCalendar(
+                                        entries = emptyList(),
+                                        visibleMonth = calendarVisibleMonth,
+                                        selectedDate = calendarSelectedDate,
+                                        view = calendarView,
+                                        onVisibleMonthChange = { calendarVisibleMonth = it },
+                                        onSelectedDateChange = { calendarSelectedDate = it },
+                                        onViewChange = { calendarView = it }
+                                    )
+                                }
                             }
-                            IncomeExpenseProgressBar(
-                                income = uiState.summary.incomeTotal,
-                                expense = uiState.summary.expenseTotal
-                            )
                         }
                     }
                 }
